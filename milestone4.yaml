@@ -1,0 +1,954 @@
+openapi: 3.0.0
+info:
+  title: SEEK Learning Portal API
+  description: |
+    API documentation for SEEK Learning Portal with integrated GenAI features.
+    
+    This API implements the user requirements specified in the SEEK portal project, enabling 
+    students, instructors, and administrators to interact with course content, assignments, 
+    and AI-powered learning features.
+  version: 1.0.0
+  
+tags:
+  - name: Admin
+    description: Endpoints for administrative functions
+  - name: Instructor
+    description: Endpoints for instructor operations
+  - name: Student
+    description: Endpoints for student interactions
+  - name: GenAI
+    description: Generative AI-powered features
+
+paths:
+  # ADMINISTRATIVE APIs
+  /api/admin_course:
+    post:
+      summary: Create or update course information
+      tags: [Admin]
+      description: |
+        Allows admins to add, edit, and update course information.
+        
+        **User Stories:**
+        - As a Portal Admin, I should be able to assign instructors to ensure proper access
+        - As a Portal Admin, I should be able to monitor student performance through a comprehensive dashboard
+        - As a Portal Admin, I should be able to make changes in the admin related information of the course data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInfo'
+      responses:
+        '200':
+          description: Course information updated successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+  
+  # INSTRUCTOR APIs
+  /api/instructor_assigned_course:
+    get:
+      summary: Get assigned courses for an instructor
+      tags: [Instructor]
+      description: |
+        Returns all courses assigned to the authenticated instructor.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to upload weekly course content along with reference materials for students
+      responses:
+        '200':
+          description: List of assigned courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Course'
+        '401':
+          description: Unauthorized
+  
+  /api/course_content/{course_id}:
+    parameters:
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the course
+    post:
+      summary: Upload course content
+      tags: [Instructor]
+      description: |
+        Allows instructors to upload learning materials for a course.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to upload weekly course content along with reference materials for students
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseContent'
+      responses:
+        '200':
+          description: Course content uploaded successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+    get:
+      summary: Get course content
+      tags: [Instructor]
+      description: |
+        Retrieves all content for a specific course.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to view individual assignment submissions as well as an aggregated view of all submissions
+      responses:
+        '200':
+          description: Course content retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseContent'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  /api/assignments:
+    post:
+      summary: Create new assignment
+      tags: [Instructor]
+      description: |
+        Creates a new assignment for a specific course.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to create weekly activities, practice questions & assignments for students
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Assignment'
+      responses:
+        '201':
+          description: Assignment created successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+    get:
+      summary: Get all assignments
+      tags: [Instructor, Student]
+      description: |
+        Retrieves all assignments for a course.
+        
+        **User Stories:**
+        - As a Course Instructor, I should be able to create weekly activities, practice questions & assignments for students
+        - As a Student, I should be able to receive automated reminders for weekly assignments and deadlines
+      parameters:
+        - name: course_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID of the course
+      responses:
+        '200':
+          description: List of assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Assignment'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  /api/assignment_submissions:
+    get:
+      summary: View assignment submissions
+      tags: [Instructor]
+      description: |
+        Get all submissions for an assignment.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to view individual assignment submissions as well as an aggregated view of all submissions
+      parameters:
+        - name: assignment_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID of the assignment
+      responses:
+        '200':
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Submission'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Assignment not found
+    post:
+      summary: Submit an assignment
+      tags: [Student]
+      description: Submit a student's work for an assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionRequest'
+      responses:
+        '201':
+          description: Submission successful
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+  
+  /api/assignment_submissions/{assignment_id}:
+    parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the assignment
+    get:
+      summary: View specific assignment submission
+      tags: [Instructor]
+      description: |
+        Get details of a specific submission.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to view individual assignment submissions as well as an aggregated view of all submissions
+      parameters:
+        - name: student_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID of the student
+      responses:
+        '200':
+          description: Submission details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Submission not found
+  
+  /api/grade_assignment:
+    post:
+      summary: Grade an assignment submission
+      tags: [Instructor]
+      description: |
+        Submit grades for an assignment.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to grade subjective assignments more efficiently and consistently using an AI assistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeSubmission'
+      responses:
+        '200':
+          description: Assignment graded successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Submission not found
+  
+  /api/announcements:
+    post:
+      summary: Create announcement
+      tags: [Instructor]
+      description: |
+        Post a new announcement for a course.
+        
+        **User Story:**
+        - As a Course Instructor, I should be able to send timely updates about course schedules, content changes, and announcements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Announcement'
+      responses:
+        '201':
+          description: Announcement created successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+    get:
+      summary: Get announcements
+      tags: [Student, Instructor]
+      description: |
+        View all announcements for a course.
+        
+        **User Stories:**
+        - As a Course Instructor, I should be able to send timely updates about course schedules, content changes, and announcements
+        - As a Student, I should be able to receive automated reminders for weekly assignments and deadlines
+      parameters:
+        - name: course_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID of the course
+      responses:
+        '200':
+          description: List of announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Announcement'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  /api/announcements/{announcement_id}:
+    parameters:
+      - name: announcement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the announcement
+    get:
+      summary: Get specific announcement
+      tags: [Student, Instructor]
+      description: View details of a specific announcement
+      responses:
+        '200':
+          description: Announcement details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Announcement not found
+  
+  # STUDENT APIs
+  /api/course_registration:
+    post:
+      summary: Register for a course
+      tags: [Student]
+      description: Allows students to register for available courses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseRegistration'
+      responses:
+        '201':
+          description: Course registration successful
+        '400':
+          description: Invalid input or student already registered
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  /api/user_course:
+    get:
+      summary: Get enrolled courses
+      tags: [Student]
+      description: Returns all courses a student is enrolled in
+      responses:
+        '200':
+          description: List of enrolled courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Course'
+        '401':
+          description: Unauthorized
+  
+  /api/course_details/{course_id}:
+    parameters:
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the course
+    get:
+      summary: Get course details
+      tags: [Student]
+      description: Get detailed information about a specific course
+      responses:
+        '200':
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetails'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  # GENERATIVE AI FEATURES
+  /api/ai/course/{course_id}/content:
+    parameters:
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the course
+    post:
+      summary: AI Course Content Assistant
+      tags: [GenAI, Student]
+      description: |
+        Provides AI-powered answers to questions about course content.
+        
+        **User Stories:**
+        - As a Student, I should be able to summarize lectures and identify key points from each session quickly
+        - As a Student, I should be able to access a Question Bank that includes practice questions generated with variations
+        - As a Student, I should be able to ask course-related questions directly on the portal to the LLM based ChatBot
+        
+        **Implementation:**
+        The Course Content Assistant uses LLMs to analyze lecture materials and generate concise 
+        summaries with key points highlighted. It can also generate practice questions modeled 
+        after previous question patterns using the knowledge base of course materials.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIContentRequest'
+      responses:
+        '200':
+          description: AI-generated response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  /api/ai/programming:
+    post:
+      summary: AI Programming Assistant
+      tags: [GenAI, Student]
+      description: |
+        Provides coding assistance and programming concept explanations.
+        
+        **User Story:**
+        - As a Student, I should be able to get assistance with coding questions and be able to code solutions myself
+        
+        **Implementation:**
+        The Programming Assistant provides coding guidance, explains concepts, and offers debugging help 
+        without writing complete solutions for students. It helps students understand programming 
+        concepts and improve their coding skills.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIProgrammingRequest'
+      responses:
+        '200':
+          description: AI-generated programming assistance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+  
+  /api/ai/assignment/{course_id}/{assignment_id}/help:
+    parameters:
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the course
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the assignment
+    post:
+      summary: AI Assignment Helper
+      tags: [GenAI, Student]
+      description: |
+        Assists students with assignment problems.
+        
+        **User Story:**
+        - As a Student, I should be able to ask course-related questions about materials or grading policies
+        
+        **Implementation:**
+        The Assignment Helper uses an assignment-specific knowledge base to help break down complex problems
+        and guide students through problem-solving approaches while maintaining academic integrity by not 
+        providing direct solutions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIAssignmentRequest'
+      responses:
+        '200':
+          description: AI-generated assignment assistance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course or assignment not found
+  
+  /api/ai/course/{course_id}/study:
+    parameters:
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the course
+    post:
+      summary: AI Study Planner
+      tags: [GenAI, Student]
+      description: |
+        Creates personalized study plans based on course materials.
+        
+        **User Story:**
+        - As a Student, I should be able to receive automated reminders for weekly assignments and deadlines
+        
+        **Implementation:**
+        The Study Planner suggests timelines based on upcoming deadlines and creates customized study 
+        schedules to help students stay organized and submit assignments on time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIStudyRequest'
+      responses:
+        '200':
+          description: AI-generated study plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+  
+  /api/ai/grading/{course_id}/analyze:
+    parameters:
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the course
+    post:
+      summary: AI Grading Assistant
+      tags: [GenAI, Instructor]
+      description: |
+        Analyzes student responses against rubrics and suggests grading.
+        
+        **User Stories:**
+        - As a Course Instructor, I should be able to grade subjective assignments more efficiently and consistently using an AI assistant
+        - As a Course Instructor, I should be able to review student feedback by leveraging sentiment analysis and keyword extraction
+        
+        **Implementation:**
+        The Grading Assistant analyzes student responses against rubrics to suggest grades and provide 
+        feedback points, which instructors can then use when submitting the final grade. It can also 
+        analyze patterns in student responses to identify strengths and weaknesses in understanding.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIGradingRequest'
+      responses:
+        '200':
+          description: AI-generated grading assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIGradingResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Course not found
+
+components:
+  schemas:
+    CourseInfo:
+      type: object
+      properties:
+        course_name:
+          type: string
+          description: Name of the course
+        instructor_id:
+          type: integer
+          description: ID of the instructor assigned to the course
+        credits:
+          type: integer
+          description: Number of credits for the course
+      required:
+        - course_name
+        - credits
+    
+    Course:
+      type: object
+      properties:
+        course_id:
+          type: integer
+          description: Unique identifier for the course
+        course_name:
+          type: string
+          description: Name of the course
+        instructor_id:
+          type: integer
+          description: ID of the instructor assigned to the course
+        credits:
+          type: integer
+          description: Number of credits for the course
+      required:
+        - course_id
+        - course_name
+        - credits
+    
+    CourseContent:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: object
+            properties:
+              lecture_no:
+                type: string
+                description: Lecture number (e.g., "1.1")
+              lecture_url:
+                type: string
+                description: URL to the lecture content
+            required:
+              - lecture_no
+              - lecture_url
+      required:
+        - content
+    
+    Assignment:
+      type: object
+      properties:
+        course_id:
+          type: integer
+          description: ID of the course the assignment belongs to
+        title:
+          type: string
+          description: Title of the assignment
+        description:
+          type: string
+          description: Detailed description of the assignment
+        deadline:
+          type: string
+          format: date-time
+          description: Deadline for the assignment
+        max_marks:
+          type: integer
+          description: Maximum marks for the assignment
+      required:
+        - course_id
+        - title
+        - description
+        - deadline
+        - max_marks
+    
+    SubmissionRequest:
+      type: object
+      properties:
+        assignment_id:
+          type: integer
+          description: ID of the assignment being submitted
+        content:
+          type: string
+          description: Content of the submission
+        attachments:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Attached files
+      required:
+        - assignment_id
+        - content
+    
+    Submission:
+      type: object
+      properties:
+        submission_id:
+          type: integer
+          description: Unique identifier for the submission
+        assignment_id:
+          type: integer
+          description: ID of the assignment
+        student_id:
+          type: integer
+          description: ID of the student who submitted
+        content:
+          type: string
+          description: Content of the submission
+        submission_date:
+          type: string
+          format: date-time
+          description: Date and time of submission
+        graded:
+          type: boolean
+          description: Whether the submission has been graded
+        marks:
+          type: number
+          description: Marks awarded for the submission
+        feedback:
+          type: string
+          description: Feedback from the instructor
+      required:
+        - submission_id
+        - assignment_id
+        - student_id
+        - content
+        - submission_date
+        - graded
+    
+    GradeSubmission:
+      type: object
+      properties:
+        submission_id:
+          type: integer
+          description: ID of the submission to grade
+        marks:
+          type: number
+          description: Marks awarded for the submission
+        feedback:
+          type: string
+          description: Feedback for the student
+      required:
+        - submission_id
+        - marks
+    
+    Announcement:
+      type: object
+      properties:
+        announcement_id:
+          type: integer
+          description: Unique identifier for the announcement
+        course_id:
+          type: integer
+          description: ID of the course the announcement belongs to
+        title:
+          type: string
+          description: Title of the announcement
+        content:
+          type: string
+          description: Content of the announcement
+        announcement_date:
+          type: string
+          format: date-time
+          description: Date and time of the announcement
+      required:
+        - course_id
+        - title
+        - content
+    
+    CourseRegistration:
+      type: object
+      properties:
+        course_id:
+          type: integer
+          description: ID of the course to register for
+      required:
+        - course_id
+    
+    CourseDetails:
+      type: object
+      properties:
+        course_id:
+          type: integer
+          description: Unique identifier for the course
+        course_name:
+          type: string
+          description: Name of the course
+        instructor_name:
+          type: string
+          description: Name of the instructor
+        credits:
+          type: integer
+          description: Number of credits for the course
+        content:
+          type: array
+          items:
+            type: object
+            properties:
+              lecture_no:
+                type: string
+                description: Lecture number (e.g., "1.1")
+              lecture_url:
+                type: string
+                description: URL to the lecture content
+      required:
+        - course_id
+        - course_name
+        - instructor_name
+        - credits
+        - content
+    
+    AIContentRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          description: Question about course content
+      required:
+        - question
+    
+    AIProgrammingRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          description: Programming question or concept to explain
+        code:
+          type: string
+          description: Code snippet for context (optional)
+        language:
+          type: string
+          description: Programming language (optional)
+      required:
+        - question
+    
+    AIAssignmentRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          description: Question about the assignment
+      required:
+        - question
+    
+    AIStudyRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          description: Request for study planning assistance
+        timeline:
+          type: string
+          description: Optional study timeline information
+      required:
+        - question
+    
+    AIGradingRequest:
+      type: object
+      properties:
+        student_response:
+          type: string
+          description: The student's response to be analyzed
+        rubric_name:
+          type: string
+          description: Name of the specific rubric to use (optional)
+      required:
+        - student_response
+    
+    AIResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+          description: Status of the AI response
+        response:
+          type: string
+          description: AI-generated content
+        metadata:
+          type: object
+          description: Additional metadata about the response
+      required:
+        - status
+        - response
+    
+    AIGradingResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+          description: Status of the AI grading
+        response:
+          type: string
+          description: AI analysis of the student response
+        suggested_grade:
+          type: number
+          description: AI-suggested grade
+        strengths:
+          type: array
+          items:
+            type: string
+          description: Strengths identified in the response
+        weaknesses:
+          type: array
+          items:
+            type: string
+          description: Areas that need improvement
+      required:
+        - status
+        - response
+  
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

@@ -5,9 +5,28 @@ from phi.vectordb.lancedb import LanceDb, SearchType
 from phi.embedder.sentence_transformer import SentenceTransformerEmbedder
 from flask import current_app
 from phi.model.openrouter import OpenRouter
+from phi.storage.agent.sqlite import SqlAgentStorage
+from phi.tools.python import PythonTools
+from phi.tools.duckduckgo import DuckDuckGo
+
+# Global registry to store agent instances by user_id
+_agent_registry = {}
 
 class ProgrammingAssistant:
-    def __init__(self):
+    def __init__(self, user_id):
+        self.user_id = user_id
+        self.agent_key = f"programming_{user_id}"
+        
+        # Check if an agent already exists for this user
+        if self.agent_key in _agent_registry:
+            current_app.logger.info(f"Using existing programming agent for user {user_id}")
+            self.agent = _agent_registry[self.agent_key]
+            self.knowledge_base = self.agent.knowledge
+            return
+            
+        # If no existing agent, create a new one
+        current_app.logger.info(f"Creating new programming agent for user {user_id}")
+        
         # Define the lancedb directory path
         self.lancedb_dir = "tmp/lancedb"
         os.makedirs(self.lancedb_dir, exist_ok=True)
@@ -37,13 +56,30 @@ class ProgrammingAssistant:
             # Load the knowledge base
             self.knowledge_base.load(recreate=False)
 
+            # Create storage directory if it doesn't exist
+            os.makedirs("tmp", exist_ok=True)
+
             # Initialize agent with knowledge base
             self.agent = Agent(
                 model=OpenRouter(
                     id="google/gemini-2.0-pro-exp-02-05:free",
                     max_tokens=4096,
-                    top_p=0.9
                 ),
+                tools=[
+                    PythonTools(),
+                    DuckDuckGo(),
+                ],
+                show_tool_calls=True,
+                # Use SQLite storage for persistence
+                storage=SqlAgentStorage(
+                    table_name="programming_assistant_sessions", 
+                    db_file="tmp/agent_storage.db",
+                ),
+                # Set the session_id at the Agent level
+                session_id=f"programming_user_{user_id}",
+                # Add history to messages
+                add_history_to_messages=True,
+                num_history_responses=25,
                 system_prompt="""You are an AI Programming Assistant. Your role is to:
                 1. Use the programming knowledge base to explain concepts
                 2. Guide students through problem-solving approaches
@@ -61,6 +97,9 @@ class ProgrammingAssistant:
                 search_knowledge=True,
                 markdown=True
             )
+            
+            # Store the agent in the registry
+            _agent_registry[self.agent_key] = self.agent
 
         except Exception as e:
             current_app.logger.error(f"Error initializing knowledge base: {str(e)}")

@@ -9,6 +9,7 @@ from backend.ai.course_content_assistant import CourseContentAssistant
 from backend.ai.programming_assistant import ProgrammingAssistant
 from backend.ai.assignment_helper import AssignmentHelper
 from backend.ai.study_planner import StudyPlanner
+from backend.ai.grading_assistant import GradingAssistant
 import os
 
 
@@ -42,20 +43,20 @@ class Admin_Course_API(Resource):
             #instructor_id = args['instructor_id']
         )
 
-        try:
-            db.session.add(new_course)
-            db.session.commit()
-            return {
-                "message": "Course added successfully",
-                "course": {
-                    "id": new_course.id,
-                    "course_name": new_course.course_name,
-                    "credits": new_course.credits
-                }
-            }, 201
-        except Exception as e:
-            db.session.rollback()
-            return {"message": f"Error creating course: {str(e)}"}, 500
+        # try:
+        db.session.add(new_course)
+        db.session.commit()
+        return {
+            "message": "Course added successfully",
+            "course": {
+                "id": new_course.id,
+                "course_name": new_course.course_name,
+                "credits": new_course.credits
+            }
+        }, 201
+        # except Exception as e:
+        #     db.session.rollback()
+        #     return {"message": f"Error creating course: {str(e)}"}, 500
 
 
     get_parser = reqparse.RequestParser()
@@ -259,7 +260,7 @@ class Instructor_Assigned_Course_API(Resource):
 
 # Get | Post -> Course_Content
 class Instructor_Course_Content_API(Resource):
-    @auth_required("token")
+    # @auth_required("token")
     def get(self, course_id):
         current_instructor = current_user
         course = Course.query.filter_by(id=course_id, instructor_id=current_instructor.id).first()
@@ -700,7 +701,8 @@ class AI_Course_Content_API(Resource):
                     "error": "No PDF files found in course directory"
                 }, 404
 
-            assistant = CourseContentAssistant(course_id)
+            # Pass the current user's ID to the CourseContentAssistant
+            assistant = CourseContentAssistant(course_id, current_user.id)
             response = assistant.get_response(args['question'])
             
             if response["status"] == "success":
@@ -730,7 +732,8 @@ class AI_Programming_API(Resource):
     @roles_required("student")
     def post(self):
         args = self.post_parser.parse_args()
-        assistant = ProgrammingAssistant()
+        # Pass the user_id to the ProgrammingAssistant
+        assistant = ProgrammingAssistant(current_user.id)
         response = assistant.get_response(args['question'])
         return response
 
@@ -763,7 +766,8 @@ class AI_Assignment_Helper_API(Resource):
             return {"message": "Not enrolled in this course"}, 403
 
         try:
-            assistant = AssignmentHelper(course_id, assignment_id)
+            # Pass the user_id to the AssignmentHelper
+            assistant = AssignmentHelper(course_id, assignment_id, current_user.id)
             response = assistant.get_response(args['question'])
             return response
         except Exception as e:
@@ -793,9 +797,65 @@ class AI_Study_Planner_API(Resource):
         if not enrollment:
             return {"message": "Not enrolled in this course"}, 403
 
-        assistant = StudyPlanner(course_id)
+        # Pass the user_id to the StudyPlanner
+        assistant = StudyPlanner(course_id, current_user.id)
         response = assistant.get_response(args['question'])
         return response
+
+class AI_Grading_Assistant_API(Resource):
+    post_parser = reqparse.RequestParser()
+    post_parser.add_argument('student_response', type=str, required=True, 
+                           help="Student's subjective response is required")
+    post_parser.add_argument('rubric_name', type=str, required=False, 
+                           help="Optional specific rubric name to use")
+
+    @auth_required("token")
+    @roles_required("instructor")
+    def post(self, course_id):
+        args = self.post_parser.parse_args()
+        
+        # Verify instructor is assigned to the course
+        course = Course.query.filter_by(id=course_id, instructor_id=current_user.id).first()
+        if not course:
+            return {"message": "Not authorized to access grading for this course"}, 403
+
+        try:
+            # Create directories if they don't exist
+            course_dir = f"backend/ai/course_materials/{course_id}"
+            os.makedirs(course_dir, exist_ok=True)
+            os.makedirs("tmp/lancedb", exist_ok=True)
+
+            # Check if directory has PDFs (rubrics)
+            if not any(f.endswith('rubric.pdf') for f in os.listdir(course_dir)):
+                return {
+                    "message": "No grading rubrics available",
+                    "error": "No PDF files found in course directory"
+                }, 404
+
+            # Initialize the grading assistant with instructor's ID
+            assistant = GradingAssistant(course_id, current_user.id)
+            response = assistant.get_response(
+                args['student_response'], 
+                args.get('rubric_name')
+            )
+            
+            if response["status"] == "success":
+                return {
+                    "message": "Analysis completed successfully",
+                    "response": response["response"]
+                }, 200
+            else:
+                return {
+                    "message": "Error analyzing response",
+                    "error": response["message"]
+                }, 500
+                
+        except Exception as e:
+            current_app.logger.error(f"Grading Assistant error: {str(e)}")
+            return {
+                "message": "Error processing request",
+                "error": str(e)
+            }, 500
 
 # Add resources to API
 api.add_resource(Admin_Course_API, '/admin_course')                                 # Admin can Add, Edit and Update course info
@@ -816,3 +876,4 @@ api.add_resource(AI_Course_Content_API, '/ai/course/<int:course_id>/content')
 api.add_resource(AI_Programming_API, '/ai/programming')
 api.add_resource(AI_Assignment_Helper_API, '/ai/assignment/<int:course_id>/<int:assignment_id>/help')
 api.add_resource(AI_Study_Planner_API, '/ai/course/<int:course_id>/study')
+api.add_resource(AI_Grading_Assistant_API, '/ai/grading/<int:course_id>/analyze')

@@ -407,27 +407,6 @@ class Assignment_API(Resource):
     def post(self):
         args = self.post_parser.parse_args()
 
-        """
-        sample data:
-            {
-                "title": "Sample Assignment",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100,
-                "course_id": 2,
-                "assignment_type": "objective",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-            }
-            Please Note:
-            - assignment_content: comma separated questions
-            - assignment_options: comma separated options for each question
-            - assignment_correct_answer: comma separated correct answers for each question
-            - course_id: the instructor should be assigned to this course
-
-        """
-
         
         current_instructor = current_user
         
@@ -468,51 +447,6 @@ class Assignment_API(Resource):
     @auth_required("token")
     def get(self):
         course_id = request.args.get('course_id', type=int)
-        """
-        sample output:
-        {
-            "assignments": [
-                {
-                "id": 2,
-                "title": "Sample Assignment",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                },
-                {
-                "id": 3,
-                "title": "Sample Assignment 2",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                },
-                {
-                "id": 4,
-                "title": "Sample Assignment 2",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                }
-            ]
-        }
-        Please Note:
-        - assignment_content: comma separated questions
-        - assignment_options: comma separated options for each question
-        - assignment_correct_answer: comma separated correct answers for each question
-        - course_id: the instructor should be assigned to this course
-        """
         if not course_id:
             return {"message": "Course ID is required"}, 400
 

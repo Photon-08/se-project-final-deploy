@@ -28,6 +28,8 @@ def createApp():
 app = createApp()
 import backend.create_initial_data
 import backend.router
+print(app.url_map)
+
 
 if (__name__ == '__main__'):
     app.run()

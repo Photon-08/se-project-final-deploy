@@ -72,6 +72,9 @@ class Assignment(db.Model):
     assignment_type = db.Column(db.String(20), nullable=False)  # 'subjective' or 'objective'
     status = db.Column(db.String(20), nullable=False)  # 'draft' or 'published'
     created_at = db.Column(db.DateTime, default=dt.now)
+    assignment_content = db.Column(db.Text,)# nullable=False)
+    assignment_options = db.Column(db.Text)#, nullable=False)
+    assignment_correct_answer = db.Column(db.Text,)# nullable=False)
 
 class AssignmentSubmission(db.Model):
     __tablename__ = 'assignment_submission'

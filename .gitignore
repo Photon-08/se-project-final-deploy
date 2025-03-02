@@ -3,6 +3,7 @@
 backend/__pycache__/
 venv/
 .vscode/
+.env
 *.log
 myenv/
 tmp/

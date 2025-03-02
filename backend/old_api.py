@@ -407,27 +407,6 @@ class Assignment_API(Resource):
     def post(self):
         args = self.post_parser.parse_args()
 
-        """
-        sample data:
-            {
-                "title": "Sample Assignment",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100,
-                "course_id": 2,
-                "assignment_type": "objective",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-            }
-            Please Note:
-            - assignment_content: comma separated questions
-            - assignment_options: comma separated options for each question
-            - assignment_correct_answer: comma separated correct answers for each question
-            - course_id: the instructor should be assigned to this course
-
-        """
-
         
         current_instructor = current_user
         
@@ -468,51 +447,6 @@ class Assignment_API(Resource):
     @auth_required("token")
     def get(self):
         course_id = request.args.get('course_id', type=int)
-        """
-        sample output:
-        {
-            "assignments": [
-                {
-                "id": 2,
-                "title": "Sample Assignment",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                },
-                {
-                "id": 3,
-                "title": "Sample Assignment 2",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                },
-                {
-                "id": 4,
-                "title": "Sample Assignment 2",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                }
-            ]
-        }
-        Please Note:
-        - assignment_content: comma separated questions
-        - assignment_options: comma separated options for each question
-        - assignment_correct_answer: comma separated correct answers for each question
-        - course_id: the instructor should be assigned to this course
-        """
         if not course_id:
             return {"message": "Course ID is required"}, 400
 
@@ -540,15 +474,6 @@ class Assignment_Submission_API(Resource):
     @auth_required("token")
     @roles_required("student")
     def post(self):
-        """
-        API endpoint to submit an assignment.
-        Sample Input:
-        {
-            "assignment_id": 1,
-            "submission_content": "A, B, C, D"
-        }
-        
-        """
         args = self.post_parser.parse_args()
         current_student = current_user
         
@@ -594,22 +519,6 @@ class Assignment_Submission_API(Resource):
 
     @auth_required("token")
     def get(self, assignment_id):
-        """
-        API endpoint to get assignment submissions.
-        - If the user is an instructor, all submissions for the assignment are returned.
-        - If the user is a student, their own submission is returned.
-        Sample Output:
-        {
-            "submission": {
-                "id": 1,
-                "submitted_at": "2025-03-02 18:18:14",
-                "marks": 85.0,
-                "feedback": "Good implementation, but needs better error handling",
-                "assignment_sub": "Your submission text here."
-            }
-        }
-        """
-
         if 'instructor' in [role.name for role in current_user.roles]:
             # Instructor view - all submissions for an assignment
             submissions = AssignmentSubmission.query.filter_by(assignment_id=assignment_id).all()
@@ -638,8 +547,7 @@ class Assignment_Submission_API(Resource):
                     "id": submission.id,
                     "submitted_at": submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
                     "marks": submission.marks,
-                    "feedback": submission.feedback,
-                    "assignment_sub": f"{submission.submission_content}"
+                    "feedback": submission.feedback
                 }
             }, 200
 
@@ -1035,7 +943,7 @@ api.add_resource(Instructor_Assigned_Course_API, '/instructor_assigned_course') 
 api.add_resource(Instructor_Course_Content_API, '/course_content/<int:course_id>')  # Course content management
 api.add_resource(Assignment_API, '/assignments')                                    # Assignment management
 api.add_resource(Assignment_Submission_API, 
-                 '/assignment_submissions/', 
+                 '/assignment_submissions', 
                  '/assignment_submissions/<int:assignment_id>')                     # Assignment submission handling
 api.add_resource(Assignment_Grading_API, '/grade_assignment')                      # Assignment grading
 api.add_resource(Announcement_API, 

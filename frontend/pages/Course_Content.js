@@ -1,58 +1,53 @@
 export default {
-    template: `
-      <div>
-        <h2>Course Content Management</h2>
-  
-        <!-- Display Weeks and Lectures -->
-        <div v-for="(week, weekIndex) in weeks" :key="weekIndex">
-          <h3>Week {{ weekIndex + 1 }}</h3>
-  
-          <!-- Dropdown to manage lectures -->
-          <div>
-            <button @click="toggleDropdown(weekIndex)">
-              Manage Lectures for Week {{ weekIndex + 1 }}
+  template: `
+    <div class="container mt-4">
+      <h2 class="text-center text-primary mb-4">Course Content Management</h2>
+      
+      <!-- Display Weeks and Lectures -->
+      <div v-for="(week, weekIndex) in weeks" :key="weekIndex" class="card mb-3 p-3">
+        <h3 class="text-secondary">Week {{ weekIndex + 1 }}</h3>
+        
+        <button class="btn btn-info my-2" @click="toggleDropdown(weekIndex)">
+          Manage Lectures for Week {{ weekIndex + 1 }}
+        </button>
+        
+        <div v-if="dropdownOpen === weekIndex" class="mt-2">
+          <!-- Lectures in the Week -->
+          <div v-for="(lecture, lectureIndex) in week" :key="lectureIndex" class="input-group mb-2">
+            <span class="input-group-text">Lecture {{ weekIndex + 1 }}.{{ lectureIndex + 1 }}</span>
+            <input v-model="lecture.lecture_url" type="text" class="form-control" placeholder="Enter lecture URL" />
+            <button v-if="!lecture.lecture_url.trim()" @click="removeLecture(weekIndex, lectureIndex)" class="btn btn-danger">
+              Remove
             </button>
-  
-            <div v-if="dropdownOpen === weekIndex">
-              <!-- Lectures in the Week -->
-              <div v-for="(lecture, lectureIndex) in week" :key="lectureIndex">
-                <span>Lecture {{ weekIndex + 1 }}.{{ lectureIndex + 1 }}:</span>
-                <input
-                  v-model="lecture.lecture_url"
-                  type="text"
-                  placeholder="Enter lecture URL"
-                />
-                <!-- Delete button only if lecture_url is empty -->
-                <button v-if="!lecture.lecture_url.trim()" @click="removeLecture(weekIndex, lectureIndex)">
-                  Remove
-                </button>
-              </div>
-  
-              <!-- Add Lecture Button inside dropdown -->
-              <button @click="addLectureToWeek(weekIndex)">
-                Add Another Lecture
-              </button>
-            </div>
           </div>
+          
+          <button class="btn btn-success" @click="addLectureToWeek(weekIndex)">
+            Add Another Lecture
+          </button>
         </div>
-  
-        <!-- Add Week Button outside dropdown -->
-        <button @click="addNewWeek">Add Another Week</button>
-  
-        <!-- Submit Button -->
-        <div>
-          <button @click="submitContent">Submit Content</button>
-        </div>
-  
-        <!-- Error/Success Messages -->
-        <p v-if="message" :class="messageType === 'error' ? 'error' : 'success'">
-          {{ message }}
-        </p>
-  
-        <!-- Loading Indicator -->
-        <div v-if="loading">Loading...</div>
       </div>
-    `,
+      
+      <!-- Add Week Button -->
+      <button class="btn btn-primary mb-3" @click="addNewWeek">Add Another Week</button>
+      
+      <!-- Submit Button -->
+      <div class="text-center">
+        <button class="btn btn-success" @click="submitContent">Submit Content</button>
+      </div>
+      
+      <!-- Error/Success Messages -->
+      <p v-if="message" class="mt-3 text-center" :class="messageType === 'error' ? 'text-danger' : 'text-success'">
+        {{ message }}
+      </p>
+      
+      <!-- Loading Indicator -->
+      <div v-if="loading" class="text-center mt-2">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+  `,
   
     data() {
       return {

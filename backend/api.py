@@ -15,7 +15,6 @@ import os
 
 api = Api(prefix='/api')
 
-
 # Admin can Add , Edit and Update course info | Like course name , credit , assign instructor
 class Admin_Course_API(Resource):
     
@@ -200,7 +199,6 @@ class User_Course_API(Resource):
             return courses, 200
         else:
             return {"message": "No courses found"}, 404
-
 
 
 # Get course content for a specefic course
@@ -873,12 +871,14 @@ class AI_Course_Content_API(Resource):
             # Pass the current user's ID to the CourseContentAssistant
             assistant = CourseContentAssistant(course_id, current_user.id)
             response = assistant.get_response(args['question'])
+            #print(response)
             
             if response["status"] == "success":
                 return {
                     "message": "Response generated successfully",
                     "response": response["response"]
                 }, 200
+                
             else:
                 return {
                     "message": "Error generating response",

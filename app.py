@@ -28,8 +28,9 @@ def createApp():
 app = createApp()
 import backend.create_initial_data
 import backend.router
-print(app.url_map)
+#print(app.url_map)
 
-
+import os
+os.environ["OPENAI_API_KEY"] = "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"
 if (__name__ == '__main__'):
     app.run()

@@ -9,3 +9,4 @@ myenv/
 tmp/
 backend/ai/course_materials/
 backend/ai/programming_resources/
+venv.txt

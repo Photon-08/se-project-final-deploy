@@ -12,6 +12,8 @@ from phi.tools.duckduckgo import DuckDuckGo
 # Global registry to store agent instances by course_id and user_id
 _agent_registry = {}
 
+
+
 class CourseContentAssistant:
     def __init__(self, course_id, user_id):
         self.course_id = course_id

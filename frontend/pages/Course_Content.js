@@ -1,177 +1,216 @@
 export default {
   template: `
-    <div class="container mt-4">
-      <h2 class="text-center text-primary mb-4">Course Content Management</h2>
-      
-      <!-- Display Weeks and Lectures -->
-      <div v-for="(week, weekIndex) in weeks" :key="weekIndex" class="card mb-3 p-3">
-        <h3 class="text-secondary">Week {{ weekIndex + 1 }}</h3>
-        
-        <button class="btn btn-info my-2" @click="toggleDropdown(weekIndex)">
-          Manage Lectures for Week {{ weekIndex + 1 }}
+    <div>
+      <h2>Course Content Management</h2>
+      <div v-for="week in weeks" :key="\`week-\${week.weekIndex}\`">
+        <h3>Week {{ week.weekIndex }}</h3>
+        <button @click="toggleDropdown(week.weekIndex)">
+          Manage Lectures & Assignments for Week {{ week.weekIndex }}
         </button>
-        
-        <div v-if="dropdownOpen === weekIndex" class="mt-2">
-          <!-- Lectures in the Week -->
-          <div v-for="(lecture, lectureIndex) in week" :key="lectureIndex" class="input-group mb-2">
-            <span class="input-group-text">Lecture {{ weekIndex + 1 }}.{{ lectureIndex + 1 }}</span>
-            <input v-model="lecture.lecture_url" type="text" class="form-control" placeholder="Enter lecture URL" />
-            <button v-if="!lecture.lecture_url.trim()" @click="removeLecture(weekIndex, lectureIndex)" class="btn btn-danger">
-              Remove
-            </button>
+        <div v-if="dropdownOpen === week.weekIndex">
+          <h4>Lectures</h4>
+          <div v-for="(lecture, lectureIndex) in week.lectures" :key="\`lecture-\${week.weekIndex}-\${lectureIndex}\`">
+            <span>Lecture {{ week.weekIndex }}.{{ lectureIndex + 1 }}:</span>
+            <input v-model="lecture.lecture_url" type="text" placeholder="Enter lecture URL" />
+            <button v-if="!lecture.lecture_url.trim()" @click="removeLecture(week.weekIndex, lectureIndex)">Remove</button>
           </div>
-          
-          <button class="btn btn-success" @click="addLectureToWeek(weekIndex)">
-            Add Another Lecture
-          </button>
+          <button @click="addLectureToWeek(week.weekIndex)">Add Another Lecture</button>
+          <h4>Assignments</h4>
+          <div v-for="(assignment, assignmentIndex) in week.assignments" :key="\`assignment-\${week.weekIndex}-\${assignmentIndex}\`">
+            <p>{{ assignment.title }}</p>
+            <input v-model="assignment.description" type="text" placeholder="Description" />
+            <input v-model="assignment.due_date" type="date" />
+            <input v-model="assignment.max_marks" type="number" placeholder="Max Marks" />
+            <select v-model="assignment.status">
+              <option value="unpublished">Unpublished</option>
+              <option value="published">Published</option>
+            </select>
+            <h5>Questions</h5>
+            <div v-for="(question, qIndex) in assignment.questions" :key="\`question-\${assignmentIndex}-\${qIndex}\`">
+              <input v-model="question.text" type="text" placeholder="Question" />
+              <div v-for="(option, oIndex) in question.options" :key="\`option-\${qIndex}-\${oIndex}\`">
+                <input v-model="question.options[oIndex]" type="text" placeholder="Option" />
+              </div>
+              <input v-model="question.correct_answer" type="text" placeholder="Correct Answer" />
+              <button @click="addOption(question)">Add Option</button>
+            </div>
+            <button @click="addQuestion(assignment)">Add Question</button>
+          </div>
+          <button @click="addAssignment(week.weekIndex)">Add Assignment</button>
         </div>
       </div>
-      
-      <!-- Add Week Button -->
-      <button class="btn btn-primary mb-3" @click="addNewWeek">Add Another Week</button>
-      
-      <!-- Submit Button -->
-      <div class="text-center">
-        <button class="btn btn-success" @click="submitContent">Submit Content</button>
-      </div>
-      
-      <!-- Error/Success Messages -->
-      <p v-if="message" class="mt-3 text-center" :class="messageType === 'error' ? 'text-danger' : 'text-success'">
-        {{ message }}
-      </p>
-      
-      <!-- Loading Indicator -->
-      <div v-if="loading" class="text-center mt-2">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
+      <button @click="addNewWeek">Add Another Week</button>
+      <button @click="submitContent">Submit</button>
     </div>
   `,
-  
-    data() {
-      return {
-        weeks: [], // Initialize as an empty array, populated with fetched data
-        message: "",
-        messageType: "",
-        dropdownOpen: null, // Track which dropdown is open
-        course_id: null, // Will get the course_id from the route params
-        loading: false, // For loading indicator
-      };
+
+  data() {
+    return {
+      weeks: [],
+      message: "",
+      messageType: "",
+      dropdownOpen: null,
+      course_id: null,
+      loading: false,
+    };
+  },
+
+  methods: {
+    toggleDropdown(weekIndex) {
+      this.dropdownOpen = this.dropdownOpen === weekIndex ? null : weekIndex;
     },
-  
-    methods: {
-      toggleDropdown(weekIndex) {
-        this.dropdownOpen = this.dropdownOpen === weekIndex ? null : weekIndex;
-      },
-  
-      addLectureToWeek(weekIndex) {
-        this.weeks[weekIndex].push({ lecture_url: "" });
-      },
-  
-      addNewWeek() {
-        this.weeks.push([{ lecture_url: "" }]);
-      },
-  
-      removeLecture(weekIndex, lectureIndex) {
-        this.weeks[weekIndex].splice(lectureIndex, 1);
-      },
-  
-      async get_course_details(course_id) {
-        console.log("Fetching content for course ID:", course_id); // Debug log
-        this.loading = true; // Start loading
-  
-        const res = await fetch(`/api/course_content/${course_id}`, {
-          headers: {
-            "Authentication-Token": localStorage.getItem("auth_token"),
-          },
-        });
-  
-        this.loading = false; // Stop loading
-  
-        const data = await res.json();
-        console.log("Fetched data:", data); // Debug log
-  
-        if (res.ok) {
-          if (data.course_content.length > 0) {
-            const groupedContent = data.course_content.map((week) => {
-              return {
-                weekNumber: week.week,
-                lectures: week.lectures.map((lecture) => ({
-                  lecture_no: lecture.lecture_no,
-                  lecture_url: lecture.lecture_url,
-                })),
-              };
-            });
-  
-            this.weeks = groupedContent.map((week) =>
-              week.lectures.map((lecture) => ({
-                lecture_url: lecture.lecture_url,
-              }))
-            );
-          } else {
-            this.weeks = [[{ lecture_url: "" }]]; // Initialize if no content
-          }
-        } else {
-          this.message = data.message || "An error occurred while fetching course content.";
-          this.messageType = "error";
-        }
-      },
-  
-      async submitContent() {
-        this.message = ""; // Clear previous messages
-        this.messageType = "";
-  
-        const payload = [];
-  
-        this.weeks.forEach((week, weekIndex) => {
-          week.forEach((lecture, lectureIndex) => {
-            payload.push({
-              lecture_no: `${weekIndex + 1}.${lectureIndex + 1}`,
-              lecture_url: lecture.lecture_url,
-            });
-          });
-        });
-  
-        if (payload.some((lecture) => !lecture.lecture_url.trim())) {
-          this.message = "Please ensure all lecture URLs are filled.";
-          this.messageType = "error";
-          return;
-        }
-  
-        this.loading = true; // Start loading
-  
-        const res = await fetch(`/api/course_content/${this.course_id}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authentication-Token": localStorage.getItem("auth_token"),
-          },
-          body: JSON.stringify({ content: payload }),
-        });
-  
-        this.loading = false; // Stop loading
-  
-        const data = await res.json();
-        if (res.ok) {
-          this.message = data.message || "Content updated successfully!";
-          this.messageType = "success";
-        } else {
-          this.message = data.message || "An error occurred.";
-          this.messageType = "error";
-        }
-      },
+    addLectureToWeek(weekIndex) {
+      const week = this.weeks.find(w => w.weekIndex === weekIndex);
+      week.lectures.push({ lecture_url: "" });
     },
-  
-    mounted() {
-      const course_id = this.$route.params.course_id; // Get the course ID from the route parameters
-      if (!course_id) {
-        this.message = "Course ID is missing.";
-        this.messageType = "error";
-        return;
+    removeLecture(weekIndex, lectureIndex) {
+      const week = this.weeks.find(w => w.weekIndex === weekIndex);
+      week.lectures.splice(lectureIndex, 1);
+    },
+    addNewWeek() {
+      const newWeekIndex = this.weeks.length + 1;
+      this.weeks.push({ weekIndex: newWeekIndex, lectures: [], assignments: [] });
+    },
+    addAssignment(weekIndex) {
+      const week = this.weeks.find(w => w.weekIndex === weekIndex);
+      const assignmentNumber = week.assignments.length + 1;
+      week.assignments.push({
+        title: `Graded Assignment ${weekIndex}.${assignmentNumber}`,
+        description: "",
+        due_date: "",
+        max_marks: "",
+        status: "unpublished",
+        questions: [],
+      });
+    },
+    addQuestion(assignment) {
+      assignment.questions.push({
+        text: "",
+        options: ["", "", "", ""],
+        correct_answer: "",
+      });
+    },
+    addOption(question) {
+      if (question.options.length < 4) {
+        question.options.push("");
       }
-      this.course_id = course_id;
-      this.get_course_details(course_id); // Fetch the course details using the course ID
     },
-  };
-  
+    formatDate(dateString) {
+      if (!dateString) return '';
+      return dateString.split('T')[0];
+    },
+    async submitContent() {
+      // Prepare payload for assignments
+      const assignmentsPayload = this.weeks.map(week => {
+        return week.assignments.map(assignment => {
+          return {
+            title: assignment.title,
+            description: assignment.description,
+            due_date: assignment.due_date,
+            max_marks: assignment.max_marks,
+            status: assignment.status,
+            questions: assignment.questions.map(q => q.text),
+            options: assignment.questions.map(q => q.options),
+            correct_answers: assignment.questions.map(q => q.correct_answer),
+          };
+        });
+      }).flat();
+
+      // Prepare payload for lectures
+      const lecturesPayload = this.weeks.map(week => {
+        return week.lectures.map((lecture, index) => {
+          return {
+            lecture_no: `${week.weekIndex}.${index + 1}`,
+            lecture_url: lecture.lecture_url
+          };
+        });
+      }).flat();
+
+      // Send assignments payload
+      const assignmentsResponse = await fetch(`/api/instructor_assignment/${this.course_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": localStorage.getItem("auth_token"),
+        },
+        body: JSON.stringify({ assignments: assignmentsPayload }),
+      });
+
+      // Send lectures payload
+      const lecturesResponse = await fetch(`/api/course_content/${this.course_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": localStorage.getItem("auth_token"),
+        },
+        body: JSON.stringify({ content: lecturesPayload }),
+      });
+
+      if (assignmentsResponse.ok && lecturesResponse.ok) {
+        alert("Course content updated successfully!");
+      }
+    },
+
+    async get_course_details(course_id) {
+      this.loading = true;
+      const res = await fetch(`/api/course_content/${course_id}`, {
+        headers: { "Authentication-Token": localStorage.getItem("auth_token") },
+      });
+      const assignmentsRes = await fetch(`/api/instructor_assignment/${course_id}`, {
+        headers: { "Authentication-Token": localStorage.getItem("auth_token") },
+      });
+      this.loading = false;
+      const data = await res.json();
+      const assignmentsData = await assignmentsRes.json();
+      if (res.ok && assignmentsRes.ok) {
+        // Create a map to ensure all weeks are included
+        const weeksMap = {};
+        data.course_content.forEach(week => {
+          weeksMap[week.week] = {
+            weekIndex: week.week,
+            lectures: week.lectures.map(lecture => ({ lecture_url: lecture.lecture_url })),
+            assignments: []
+          };
+        });
+
+        assignmentsData.assignments.forEach(weekData => {
+          if (!weeksMap[weekData.week]) {
+            weeksMap[weekData.week] = {
+              weekIndex: weekData.week,
+              lectures: [],
+              assignments: []
+            };
+          }
+          weeksMap[weekData.week].assignments = weekData.assignments.map(assignment => ({
+            title: assignment.title,
+            description: assignment.description,
+            due_date: this.formatDate(assignment.due_date),
+            max_marks: assignment.max_marks,
+            status: assignment.status,
+            questions: assignment.questions.map((question, qIndex) => ({
+              text: question,
+              options: assignment.options[qIndex] || ["", "", "", ""],
+              correct_answer: assignment.correct_answers[qIndex] || "",
+            })),
+          }));
+        });
+
+        this.weeks = Object.values(weeksMap).sort((a, b) => a.weekIndex - b.weekIndex);
+      } else {
+        this.message = data.message || "Error fetching content.";
+        this.messageType = "error";
+      }
+    },
+  },
+
+  mounted() {
+    const course_id = this.$route.params.course_id;
+    if (!course_id) {
+      this.message = "Course ID is missing.";
+      this.messageType = "error";
+      return;
+    }
+    this.course_id = course_id;
+    this.get_course_details(course_id);
+  },
+};

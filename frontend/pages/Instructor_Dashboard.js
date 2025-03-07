@@ -1,7 +1,7 @@
 export default {
   template: `
   <div class="container mt-4">
-      <h2 class="mb-3 text-primary fw-bold">Instructor Dashboard</h2>
+      <h2 class="mb-3 text-secondary fw-bold">Current Assigned Courses</h2>
   
       <!-- Courses Section -->
       <div class="d-flex flex-wrap gap-3 px-3">
@@ -11,13 +11,20 @@ export default {
                style="width: 220px; transition: transform 0.2s; cursor: pointer;"
                @mouseover="e => e.currentTarget.style.transform='scale(1.05)'"
                @mouseleave="e => e.currentTarget.style.transform='scale(1)'">
+               
+              <!-- Course Image -->
+              <img :src="course.image || '/static/assets/card-03.jpeg'" class="card-img-top rounded" alt="Course Image" style="height: 140px; object-fit: cover;">
               
-              <h5 class="text-dark fw-bold mb-2">{{ course.course_name }}</h5>
-              <p class="text-secondary">Credits: {{ course.credits }}</p>
+              <!-- Course Details -->
+              <div class="mt-2">
+                  <h5 class="text-dark fw-bold mb-2">{{ course.course_name }}</h5>
+                  <p class="text-secondary">Credits: {{ course.credits }}</p>
+              </div>
           </div>
       </div>
   </div>
   `,
+
   data() {
     return {
       assigned_course: [],
@@ -26,10 +33,8 @@ export default {
   },
 
   methods: {
-    // Open course content page with the selected course_id
     openCourseContent(course_id) {
       if (course_id) {
-        // Navigate to the course content page by updating the hash
         window.location.hash = `#/course_content/${course_id}`;
       } else {
         console.error("Course ID is undefined");

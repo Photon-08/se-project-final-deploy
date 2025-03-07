@@ -206,7 +206,14 @@ export default {
             return { listStyleType: 'none', paddingLeft: '0' };
         },
         weekHeaderStyle() {
-            return { fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px', padding: '8px', backgroundColor: '#e1e1e1', borderRadius: '4px', textAlign: 'center' };
+            return { fontWeight: 'bold',                              
+                cursor: 'pointer',
+                marginBottom: '10px',
+                padding: '8px',
+                backgroundColor: '#007bff',
+                borderRadius: '4px',
+                textAlign: 'center',
+                color: 'white', };
         },
         nestedListStyle() {
             return { paddingLeft: '10px', listStyleType: 'none' };

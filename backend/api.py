@@ -322,212 +322,145 @@ class Instructor_Course_Content_API(Resource):
     
 
 # Assignment Management
-"""class Assignment_API(Resource):
-    post_parser = reqparse.RequestParser()
-    post_parser.add_argument('title', type=str, required=True, help="Assignment title is required")
-    post_parser.add_argument('description', type=str, required=True, help="Assignment description is required")
-    post_parser.add_argument('due_date', type=str, required=True, help="Due date is required")
-    post_parser.add_argument('max_marks', type=int, required=True, help="Maximum marks is required")
-    post_parser.add_argument('course_id', type=int, required=True, help="Course ID is required")
-    post_parser.add_argument('assignment_type', type=str, required=True, 
-                            choices=['subjective', 'objective'],
-                            help="Assignment type must be either 'subjective' or 'objective'")
-
-    @auth_required("token")
-    @roles_required("instructor")
-    def post(self):
-        args = self.post_parser.parse_args()
-        current_instructor = current_user
-        
-        # Verify instructor is assigned to the course
-        course = Course.query.filter_by(id=args['course_id'], instructor_id=current_instructor.id).first()
-        if not course:
-            return {"message": "You are not authorized to create assignments for this course"}, 403
-
-        new_assignment = Assignment(
-            title=args['title'],
-            description=args['description'],
-            due_date=datetime.strptime(args['due_date'], '%Y-%m-%d'),
-            max_marks=args['max_marks'],
-            course_id=args['course_id'],
-            assignment_type=args['assignment_type'],
-            status='published'
-        )
-
-        db.session.add(new_assignment)
-        db.session.commit()
-
-        return {
-            "message": "Assignment created successfully",
-            "assignment": {
-                "id": new_assignment.id,
-                "title": new_assignment.title,
-                "due_date": new_assignment.due_date.strftime('%Y-%m-%d'),
-                "status": new_assignment.status
-            }
-        }, 201
-
-    @auth_required("token")
-    def get(self):
-        course_id = request.args.get('course_id', type=int)
-        if not course_id:
-            return {"message": "Course ID is required"}, 400
-
-        assignments = Assignment.query.filter_by(course_id=course_id).all()
-        return {
-            "assignments": [{
-                "id": assignment.id,
-                "title": assignment.title,
-                "description": assignment.description,
-                "due_date": assignment.due_date.strftime('%Y-%m-%d'),
-                "max_marks": assignment.max_marks,
-                "status": assignment.status
-            } for assignment in assignments]
-        }, 200
-"""
-
-class Assignment_API(Resource):
-    post_parser = reqparse.RequestParser()
-    post_parser.add_argument('title', type=str, required=True, help="Assignment title is required")
-    post_parser.add_argument('description', type=str, required=True, help="Assignment description is required")
-    post_parser.add_argument('due_date', type=str, required=True, help="Due date is required")
-    post_parser.add_argument('max_marks', type=int, required=True, help="Maximum marks is required")
-    post_parser.add_argument('course_id', type=int, required=True, help="Course ID is required")
-    post_parser.add_argument('assignment_type', type=str, required=True, 
-                            choices=['subjective', 'objective'],
-                            help="Assignment type must be either 'subjective' or 'objective'")
-    post_parser.add_argument('assignment_content', type=str, required=True, help="Assignment questions are required (comma separated)")
-    post_parser.add_argument('assignment_options', type=str, required=True, help="Assignment options are required (comma separated)")
-    post_parser.add_argument('assignment_correct_answer', type=str, required=True, help="Assignment correct answers are required")
-
-    @auth_required("token")
-    @roles_required("instructor")
-    def post(self):
-        args = self.post_parser.parse_args()
-
-        """
-        sample data:
-            {
-                "title": "Sample Assignment",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100,
-                "course_id": 2,
-                "assignment_type": "objective",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-            }
-            Please Note:
-            - assignment_content: comma separated questions
-            - assignment_options: comma separated options for each question
-            - assignment_correct_answer: comma separated correct answers for each question
-            - course_id: the instructor should be assigned to this course
-
-        """
-
-        
-        current_instructor = current_user
-        
-        # Verify instructor is assigned to the course
-        course = Course.query.filter_by(id=args['course_id'], instructor_id=current_instructor.id).first()
-        if not course:
-            return {"message": "You are not authorized to create assignments for this course"}, 403
-
-        new_assignment = Assignment(
-            title=args['title'],
-            description=args['description'],
-            due_date=datetime.strptime(args['due_date'], '%Y-%m-%d'),
-            max_marks=args['max_marks'],
-            course_id=args['course_id'],
-            assignment_type=args['assignment_type'],
-            status='published',
-            assignment_content=args['assignment_content'],
-            assignment_options=args['assignment_options'],
-            assignment_correct_answer=args['assignment_correct_answer']
-        )
-
-        db.session.add(new_assignment)
-        db.session.commit()
-
-        return {
-            "message": "Assignment created successfully",
-            "assignment": {
-                "id": new_assignment.id,
-                "title": new_assignment.title,
-                "due_date": new_assignment.due_date.strftime('%Y-%m-%d'),
-                "status": new_assignment.status,
-                "assignment_content": new_assignment.assignment_content,
-                "assignment_options": new_assignment.assignment_options,
-                "assignment_correct_answer": new_assignment.assignment_correct_answer,
-            }
-        }, 201
-
-    @auth_required("token")
-    def get(self):
-        course_id = request.args.get('course_id', type=int)
-        """
-        sample output:
-        {
-            "assignments": [
-                {
-                "id": 2,
-                "title": "Sample Assignment",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                },
-                {
-                "id": 3,
-                "title": "Sample Assignment 2",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
-                },
-                {
-                "id": 4,
-                "title": "Sample Assignment 2",
-                "description": "This is a sample assignment description.",
-                "due_date": "2024-12-31",
-                "max_marks": 100.0,
-                "status": "published",
-                "assignment_content": "Question 1,Question 2,Question 3",
-                "assignment_options": "A,B,C,D,A,B,C,D,A,B,C,D",
-                "assignment_correct_answer": "A,C,B"
+class Instructor_Assignment_API(Resource):
+    @auth_required('token')
+    def get(self, course_id):
+        try:
+            # Fetch all assignments for the course
+            assignments = Assignment.query.filter_by(course_id=course_id).all()
+            
+            # Organize assignments by week
+            content_by_week = {}
+            for assignment in assignments:
+                # Parse the comma-separated data
+                questions = assignment.assignment_content.split(',') if assignment.assignment_content else []
+                options = assignment.assignment_options.split(',') if assignment.assignment_options else []
+                correct_answers = assignment.assignment_correct_answer.split(',') if assignment.assignment_correct_answer else []
+                
+                # Group options in sets of 4
+                grouped_options = []
+                for i in range(0, len(options), 4):
+                    group = options[i:i+4]
+                    # Pad with empty strings if less than 4 options
+                    while len(group) < 4:
+                        group.append("")
+                    grouped_options.append(group)
+                
+                # Extract week and assignment number from the assignment title
+                title_parts = assignment.title.split()[-1].split('.')
+                week_no = int(title_parts[0])
+                assignment_no = int(title_parts[1])
+                
+                assignment_data = {
+                    'id': assignment.id,
+                    'title': assignment.title,
+                    'description': assignment.description,
+                    'due_date': assignment.due_date.isoformat() if assignment.due_date else None,
+                    'max_marks': assignment.max_marks,
+                    'status': assignment.status,
+                    'questions': questions,
+                    'options': grouped_options,
+                    'correct_answers': correct_answers,
+                    'assignment_no': assignment_no
                 }
-            ]
-        }
-        Please Note:
-        - assignment_content: comma separated questions
-        - assignment_options: comma separated options for each question
-        - assignment_correct_answer: comma separated correct answers for each question
-        - course_id: the instructor should be assigned to this course
-        """
-        if not course_id:
-            return {"message": "Course ID is required"}, 400
 
-        assignments = Assignment.query.filter_by(course_id=course_id).all()
-        return {
-            "assignments": [{
-                "id": assignment.id,
-                "title": assignment.title,
-                "description": assignment.description,
-                "due_date": assignment.due_date.strftime('%Y-%m-%d'),
-                "max_marks": assignment.max_marks,
-                "status": assignment.status,
-                "assignment_content": assignment.assignment_content,
-                "assignment_options": assignment.assignment_options,
-                "assignment_correct_answer": assignment.assignment_correct_answer,
-            } for assignment in assignments]
-        }, 200
+                if week_no not in content_by_week:
+                    content_by_week[week_no] = []
+                content_by_week[week_no].append(assignment_data)
+
+            # Structure and sort assignments by week and assignment number
+            structured_content = [
+                {"week": week_no, "assignments": sorted(content_by_week[week_no], key=lambda x: x["assignment_no"])}
+                for week_no in sorted(content_by_week.keys())
+            ]
+            #print(structured_content)
+            return jsonify({
+                'status': 'success',
+                'assignments': structured_content
+            })
+            
+        except Exception as e:
+            return jsonify({'status': 'error','message': str(e)}), 500
+
+    @auth_required('token')
+    def post(self, course_id):
+        try:
+            data = request.get_json()
+            
+            if not data or 'assignments' not in data:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Invalid data format'
+                }), 400
+            
+            # Process each assignment
+            for assignment_data in data['assignments']:
+                # Check if assignment already exists by title and course_id
+                assignment_title = assignment_data.get('title')
+                
+                if assignment_title:
+                    assignment = Assignment.query.filter_by(course_id=course_id, title=assignment_title).first()
+                    if assignment:
+                        # Update existing assignment
+                        assignment.description = assignment_data.get('description', '')
+                        
+                        # Parse due date
+                        due_date_str = assignment_data.get('due_date')
+                        if due_date_str:
+                            try:
+                                assignment.due_date = datetime.fromisoformat(due_date_str)
+                            except ValueError:
+                                return jsonify({
+                                    'status': 'error',
+                                    'message': f'Invalid date format for {assignment.title}'
+                                }), 400
+                        
+                        assignment.max_marks = assignment_data.get('max_marks', 0)
+                        assignment.status = assignment_data.get('status', 'draft')
+                        
+                        # Process questions, options, and answers
+                        questions = assignment_data.get('questions', [])
+                        options = []
+                        for option_group in assignment_data.get('options', []):
+                            options.extend(option_group)
+                        correct_answers = assignment_data.get('correct_answers', [])
+                        
+                        # Replace existing questions, options, and answers
+                        assignment.assignment_content = ','.join(questions) if questions else None
+                        assignment.assignment_options = ','.join(options) if options else None
+                        assignment.assignment_correct_answer = ','.join(correct_answers) if correct_answers else None
+                    else:
+                        # Create new assignment
+                        assignment = Assignment(
+                            course_id=course_id,
+                            title=assignment_title,
+                            description=assignment_data.get('description', ''),
+                            due_date=datetime.fromisoformat(assignment_data.get('due_date')) if assignment_data.get('due_date') else None,
+                            max_marks=assignment_data.get('max_marks', 0),
+                            status=assignment_data.get('status', 'draft'),
+                            assignment_type='objective',  # Default to objective type
+                            assignment_content=','.join(assignment_data.get('questions', [])) if assignment_data.get('questions', []) else None,
+                            assignment_options=','.join([opt for group in assignment_data.get('options', []) for opt in group]) if assignment_data.get('options', []) else None,
+                            assignment_correct_answer=','.join(assignment_data.get('correct_answers', [])) if assignment_data.get('correct_answers', []) else None
+                        )
+                        db.session.add(assignment)
+                else:
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Assignment title is required'
+                    }), 400
+            
+            db.session.commit()
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Assignments updated successfully'
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'status': 'error','message': str(e)}), 500
+
 
 # Assignment Submission
 class Assignment_Submission_API(Resource):
@@ -1033,7 +966,7 @@ api.add_resource(User_Course_API, '/user_course')                               
 api.add_resource(Course_Details_API, '/course_details/<int:course_id>')            # Get course content for a specific course
 api.add_resource(Instructor_Assigned_Course_API, '/instructor_assigned_course')     # Returns the assigned courses to instructor dash
 api.add_resource(Instructor_Course_Content_API, '/course_content/<int:course_id>')  # Course content management
-api.add_resource(Assignment_API, '/assignments')                                    # Assignment management
+api.add_resource(Instructor_Assignment_API, '/instructor_assignment/<int:course_id>') # Assignment management
 api.add_resource(Assignment_Submission_API, 
                  '/assignment_submissions/', 
                  '/assignment_submissions/<int:assignment_id>')                     # Assignment submission handling

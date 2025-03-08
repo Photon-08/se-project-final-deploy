@@ -1,47 +1,59 @@
 export default {
-  template: `
-    <div>
-      <h2>Course Content Management</h2>
-      <div v-for="week in weeks" :key="\`week-\${week.weekIndex}\`">
-        <h3>Week {{ week.weekIndex }}</h3>
-        <button @click="toggleDropdown(week.weekIndex)">
-          Manage Lectures & Assignments for Week {{ week.weekIndex }}
-        </button>
-        <div v-if="dropdownOpen === week.weekIndex">
-          <h4>Lectures</h4>
-          <div v-for="(lecture, lectureIndex) in week.lectures" :key="\`lecture-\${week.weekIndex}-\${lectureIndex}\`">
-            <span>Lecture {{ week.weekIndex }}.{{ lectureIndex + 1 }}:</span>
-            <input v-model="lecture.lecture_url" type="text" placeholder="Enter lecture URL" />
-            <button v-if="!lecture.lecture_url.trim()" @click="removeLecture(week.weekIndex, lectureIndex)">Remove</button>
-          </div>
-          <button @click="addLectureToWeek(week.weekIndex)">Add Another Lecture</button>
-          <h4>Assignments</h4>
-          <div v-for="(assignment, assignmentIndex) in week.assignments" :key="\`assignment-\${week.weekIndex}-\${assignmentIndex}\`">
-            <p>{{ assignment.title }}</p>
-            <input v-model="assignment.description" type="text" placeholder="Description" />
-            <input v-model="assignment.due_date" type="date" />
-            <input v-model="assignment.max_marks" type="number" placeholder="Max Marks" />
-            <select v-model="assignment.status">
-              <option value="unpublished">Unpublished</option>
-              <option value="published">Published</option>
-            </select>
-            <h5>Questions</h5>
-            <div v-for="(question, qIndex) in assignment.questions" :key="\`question-\${assignmentIndex}-\${qIndex}\`">
-              <input v-model="question.text" type="text" placeholder="Question" />
-              <div v-for="(option, oIndex) in question.options" :key="\`option-\${qIndex}-\${oIndex}\`">
-                <input v-model="question.options[oIndex]" type="text" placeholder="Option" />
-              </div>
-              <input v-model="question.correct_answer" type="text" placeholder="Correct Answer" />
-              <button @click="addOption(question)">Add Option</button>
-            </div>
-            <button @click="addQuestion(assignment)">Add Question</button>
-          </div>
-          <button @click="addAssignment(week.weekIndex)">Add Assignment</button>
-        </div>
+  template: `<div class="container mt-4">
+  <h2 class="text-center">Course Content Management</h2>
+
+  <div v-for="week in weeks" :key="\`week-\${week.weekIndex}\`" class="mb-4">
+    <h3>Week {{ week.weekIndex }}</h3>
+
+    <!-- Button to manage lectures & assignments -->
+    <button @click="toggleDropdown(week.weekIndex)" class="btn btn-outline-primary mb-3">
+      Manage Lectures & Assignments for Week {{ week.weekIndex }}
+    </button>
+
+    <!-- Dropdown content for lectures & assignments -->
+    <div v-if="dropdownOpen === week.weekIndex" class="border p-3">
+      <h4>Lectures</h4>
+      <div v-for="(lecture, lectureIndex) in week.lectures" :key="\`lecture-\${week.weekIndex}-\${lectureIndex}\`" class="mb-3">
+        <span>Lecture {{ week.weekIndex }}.{{ lectureIndex + 1 }}:</span>
+        <input v-model="lecture.lecture_url" type="text" class="form-control" placeholder="Enter lecture URL" />
+        <button v-if="!lecture.lecture_url.trim()" @click="removeLecture(week.weekIndex, lectureIndex)" class="btn btn-danger mt-2">Remove</button>
       </div>
-      <button @click="addNewWeek">Add Another Week</button>
-      <button @click="submitContent">Submit</button>
+      <button @click="addLectureToWeek(week.weekIndex)" class="btn btn-outline-warning mt-3">Add Another Lecture</button>
+
+      <h4 class="mt-4">Assignments</h4>
+      <div v-for="(assignment, assignmentIndex) in week.assignments" :key="\`assignment-\${week.weekIndex}-\${assignmentIndex}\`
+" class="mb-4">
+        <p><strong>{{ assignment.title }}</strong></p>
+        <input v-model="assignment.description" type="text" class="form-control mb-2" placeholder="Description" />
+        <input v-model="assignment.due_date" type="date" class="form-control mb-2" />
+        <input v-model="assignment.max_marks" type="number" class="form-control mb-2" placeholder="Max Marks" />
+        
+        <select v-model="assignment.status" class="form-select mb-3">
+          <option value="unpublished">Unpublished</option>
+          <option value="published">Published</option>
+        </select>
+
+        <h5>Questions</h5>
+        <div v-for="(question, qIndex) in assignment.questions" :key="\`question-\${assignmentIndex}-\${qIndex}\`" class="mb-3">
+          <input v-model="question.text" type="text" class="form-control mb-2" placeholder="Question" />
+          <div v-for="(option, oIndex) in question.options" :key="\`option-\${qIndex}-\${oIndex}\`" class="mb-2">
+            <input v-model="question.options[oIndex]" type="text" class="form-control" placeholder="Option" />
+          </div>
+          <input v-model="question.correct_answer" type="text" class="form-control mb-2" placeholder="Correct Answer" />
+          
+        </div>
+        <button @click="addQuestion(assignment)" class="btn btn-outline-warning mt-3">Add Question</button>
+      </div>
+
+      <button @click="addAssignment(week.weekIndex)" class="btn btn-primary mt-3">Add Assignment</button>
     </div>
+  </div>
+
+  <!-- Buttons to add new week and submit content -->
+  <button @click="addNewWeek" class="btn btn-outline-success mt-3">Add Another Week</button>
+  <button @click="submitContent" class="btn btn-success mt-4">Submit</button>
+</div>
+
   `,
 
   data() {

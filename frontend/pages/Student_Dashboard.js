@@ -1,23 +1,27 @@
 export default {
     template: `
-    <div class="container mt-4">
+      <div class="container mt-4">
         <div class="d-flex flex-wrap gap-3 px-3">
-            <!-- Courses Section -->
-            <div class="d-flex flex-wrap gap-3 flex-grow-1">
-                <div v-for="course in my_courses" :key="course.course_id" 
-                    @click="openCourseDetails(course.course_id)" 
-                    class="card shadow-sm p-3 border-0 rounded cursor-pointer" 
-                    style="width: 220px; transition: transform 0.2s; cursor: pointer;"
-                    @mouseover="e => e.currentTarget.style.transform='scale(1.05)'"
-                    @mouseleave="e => e.currentTarget.style.transform='scale(1)'">
-                    
-                    <h5 class="text-dark fw-bold mb-2">{{ course.course_name }}</h5>
-                    <p class="text-secondary mb-1">Credits: {{ course.credits }}</p>
-                    <p class="text-secondary">Term: {{ course.term }}</p>
-                </div>
+          <div class="d-flex flex-wrap gap-3 flex-grow-1">
+            <div
+              v-for="course in my_courses"
+              :key="course.course_id"
+              @click="openCourseDetails(course.course_id)"
+              class="card shadow-sm border-0 rounded cursor-pointer"
+              style="width: 250px; transition: transform 0.2s;"
+              @mouseover="e => e.currentTarget.style.transform = 'scale(1.05)'"
+              @mouseleave="e => e.currentTarget.style.transform = 'scale(1)'"
+            >
+              <img src="/static/assets/card-03.jpeg" class="card-img-top" alt="Course Image" style="height: 150px; object-fit: cover;">
+              <div class="card-body p-3">
+                <h5 class="card-title text-dark fw-bold mb-2">{{ course.course_name }}</h5>
+                <p class="card-text text-secondary mb-1">Credits: {{ course.credits }}</p>
+                <p class="card-text text-secondary">Term: {{ course.term }}</p>
+              </div>
             </div>
+          </div>
         </div>
-    </div>
+      </div>
     `,
     data() {
         return {

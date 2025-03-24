@@ -1,6 +1,5 @@
 # backend/api.py
-
-from flask import jsonify, request, current_app
+from flask import jsonify, logging, request, current_app
 from flask_restful import Api, Resource, fields, marshal_with, reqparse
 from flask_security import auth_required, current_user, roles_required
 from backend.model import * 
@@ -200,8 +199,6 @@ class User_Course_API(Resource):
         else:
             return {"message": "No courses found"}, 404
 
-
-# Get course content for a specefic course
 class Course_Details_API(Resource):
     
     def get(self, course_id):
@@ -220,13 +217,74 @@ class Course_Details_API(Resource):
         else:
             instructor_name = "Unknown"
 
+        # Get assignments for the course
+        assignments = Assignment.query.filter_by(course_id=course_id).all()
+
+        # Organize assignments by week
+        assignment_content_by_week = {}
+        for assignment in assignments:
+            questions = assignment.assignment_content.split(',') if assignment.assignment_content else []
+            options = assignment.assignment_options.split(',') if assignment.assignment_options else []
+            correct_answers = assignment.assignment_correct_answer.split(',') if assignment.assignment_correct_answer else []
+            
+            grouped_options = []
+            for i in range(0, len(options), 4):
+                group = options[i:i+4]
+                while len(group) < 4:
+                    group.append("")
+                grouped_options.append(group)
+            
+            title_parts = assignment.title.split()[-1].split('.')
+            week_no = int(title_parts[0])
+            assignment_no = int(title_parts[1])
+            
+            assignment_data = {
+                'id': assignment.id,
+                'title': assignment.title,
+                'description': assignment.description,
+                'due_date': assignment.due_date.isoformat() if assignment.due_date else None,
+                'max_marks': assignment.max_marks,
+                'status': assignment.status,
+                'questions': questions,
+                'options': grouped_options,
+                'correct_answers': correct_answers,
+                'assignment_no': assignment_no
+            }
+
+            if week_no not in assignment_content_by_week:
+                assignment_content_by_week[week_no] = []
+            assignment_content_by_week[week_no].append(assignment_data)
+
+        structured_assignments = [
+            {"week": week_no, "assignments": sorted(assignment_content_by_week[week_no], key=lambda x: x["assignment_no"])}
+            for week_no in sorted(assignment_content_by_week.keys())
+        ]
+
+        # Organize course content by week
+        content_by_week = {}
+        for content in course_content:
+            week_no, lecture_no = map(int, content.lecture_no.split('.'))
+            if week_no not in content_by_week:
+                content_by_week[week_no] = []
+            content_by_week[week_no].append({
+                "lecture_no": lecture_no,
+                "lecture_url": content.lecture_url
+            })
+
+        structured_content = [
+            {"week": week_no, "lectures": sorted(content_by_week[week_no], key=lambda x: x["lecture_no"])}
+            for week_no in sorted(content_by_week.keys())
+        ]
+
         return {
             "course": {
                 "course_name": course.course_name,
                 "credits": course.credits,
             },
-            "content": [{"lecture_no": content.lecture_no, "lecture_url": content.lecture_url} for content in course_content],
             "instructor_name": instructor_name,
+            "content": structured_content,
+            "assignments": structured_assignments
+
         }, 200
 
 
@@ -461,118 +519,6 @@ class Instructor_Assignment_API(Resource):
             db.session.rollback()
             return jsonify({'status': 'error','message': str(e)}), 500
 
-
-# Assignment Submission
-class Assignment_Submission_API(Resource):
-    post_parser = reqparse.RequestParser()
-    post_parser.add_argument('assignment_id', type=int, required=True, help="Assignment ID is required")
-    post_parser.add_argument('submission_content', type=str, required=True, help="Submission content is required")
-
-    @auth_required("token")
-    @roles_required("student")
-    def post(self):
-        """
-        API endpoint to submit an assignment.
-        Sample Input:
-        {
-            "assignment_id": 1,
-            "submission_content": "A, B, C, D"
-        }
-        
-        """
-        args = self.post_parser.parse_args()
-        current_student = current_user
-        
-        # Check if assignment exists and is still open
-        assignment = Assignment.query.get(args['assignment_id'])
-        if not assignment:
-            return {"message": "Assignment not found"}, 404
-            
-        if datetime.now() > assignment.due_date:
-            return {"message": "Assignment submission deadline has passed"}, 400
-
-        # Check if student is enrolled in the course
-        enrollment = CourseOpted.query.filter_by(
-            user_id=current_student.id,
-            course_id=assignment.course_id,
-            status=True
-        ).first()
-        
-        if not enrollment:
-            return {"message": "You are not enrolled in this course"}, 403
-
-        # Check for existing submission
-        existing_submission = AssignmentSubmission.query.filter_by(
-            assignment_id=args['assignment_id'],
-            student_id=current_student.id
-        ).first()
-
-        if existing_submission:
-            existing_submission.submission_content = args['submission_content']
-            existing_submission.submitted_at = datetime.now()
-        else:
-            new_submission = AssignmentSubmission(
-                assignment_id=args['assignment_id'],
-                student_id=current_student.id,
-                submission_content=args['submission_content'],
-                submitted_at=datetime.now()
-            )
-            db.session.add(new_submission)
-
-        db.session.commit()
-
-        return {"message": "Assignment submitted successfully"}, 201
-
-    @auth_required("token")
-    def get(self, assignment_id):
-        """
-        API endpoint to get assignment submissions.
-        - If the user is an instructor, all submissions for the assignment are returned.
-        - If the user is a student, their own submission is returned.
-        Sample Output:
-        {
-            "submission": {
-                "id": 1,
-                "submitted_at": "2025-03-02 18:18:14",
-                "marks": 85.0,
-                "feedback": "Good implementation, but needs better error handling",
-                "assignment_sub": "Your submission text here."
-            }
-        }
-        """
-
-        if 'instructor' in [role.name for role in current_user.roles]:
-            # Instructor view - all submissions for an assignment
-            submissions = AssignmentSubmission.query.filter_by(assignment_id=assignment_id).all()
-            return {
-                "submissions": [{
-                    "id": submission.id,
-                    "student_id": submission.student_id,
-                    "student_name": User.query.get(submission.student_id).name,
-                    "submitted_at": submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    "marks": submission.marks,
-                    "feedback": submission.feedback
-                } for submission in submissions]
-            }, 200
-        else:
-            # Student view - their own submission
-            submission = AssignmentSubmission.query.filter_by(
-                assignment_id=assignment_id,
-                student_id=current_user.id
-            ).first()
-            
-            if not submission:
-                return {"message": "No submission found"}, 404
-
-            return {
-                "submission": {
-                    "id": submission.id,
-                    "submitted_at": submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    "marks": submission.marks,
-                    "feedback": submission.feedback,
-                    "assignment_sub": f"{submission.submission_content}"
-                }
-            }, 200
 
 
 # Assignment Grading
@@ -958,6 +904,9 @@ class AI_Grading_Assistant_API(Resource):
                 "message": "Error processing request",
                 "error": str(e)
             }, 500
+        
+        from flask import jsonify, request
+
 
 # Add resources to API
 api.add_resource(Admin_Course_API, '/admin_course')                                 # Admin can Add, Edit and Update course info
@@ -967,9 +916,7 @@ api.add_resource(Course_Details_API, '/course_details/<int:course_id>')         
 api.add_resource(Instructor_Assigned_Course_API, '/instructor_assigned_course')     # Returns the assigned courses to instructor dash
 api.add_resource(Instructor_Course_Content_API, '/course_content/<int:course_id>')  # Course content management
 api.add_resource(Instructor_Assignment_API, '/instructor_assignment/<int:course_id>') # Assignment management
-api.add_resource(Assignment_Submission_API, 
-                 '/assignment_submissions/', 
-                 '/assignment_submissions/<int:assignment_id>')                     # Assignment submission handling
+                     # Assignment submission handling
 api.add_resource(Assignment_Grading_API, '/grade_assignment')                      # Assignment grading
 api.add_resource(Announcement_API, 
                  '/announcements',
@@ -979,3 +926,4 @@ api.add_resource(AI_Programming_API, '/ai/programming')
 api.add_resource(AI_Assignment_Helper_API, '/ai/assignment/<int:course_id>/<int:assignment_id>/help')
 api.add_resource(AI_Study_Planner_API, '/ai/course/<int:course_id>/study')
 api.add_resource(AI_Grading_Assistant_API, '/ai/grading/<int:course_id>/analyze')
+

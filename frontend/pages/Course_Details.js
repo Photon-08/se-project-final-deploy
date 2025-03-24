@@ -1,81 +1,128 @@
 export default {
     template: `
-    <div :style="containerStyle">
-        <!-- Sidebar (side box) -->
-        <div :style="sidebarStyle">
-            <ul :style="listStyle">
-                <li v-for="(week, index) in weeks" :key="index">
-                    <!-- Week Header: Clickable to toggle content visibility -->
-                    <div @click="toggleDropdown(index)" :style="weekHeaderStyle">
-                        Week {{ index + 1 }}
-                    </div>
-                    <!-- Week Content (Lecture URLs) -->
-                    <ul v-if="week.isOpen" :style="nestedListStyle">
-                        <li v-for="(content, i) in week.content" :key="i">
-                            <a href="javascript:void(0);" @click="selectLecture(content.lecture_url)" :style="linkStyle">
-                                Lecture {{ content.lecture_no }}
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
+        <div :style="containerStyle">
+            <div :style="sidebarStyle">
+                <ul :style="listStyle">
+                    <li v-for="(week, index) in weeks" :key="index">
+                        <div @click="toggleDropdown(index)" :style="weekHeaderStyle">
+                            Week {{ index + 1 }}
+                        </div>
+                        <ul v-if="week.isOpen" :style="nestedListStyle">
+                            <li v-for="(content, i) in week.content" :key="i">
+                                <a href="javascript:void(0);" @click="selectLecture(content.lecture_url)" :style="linkStyle">
+                                    Lecture {{ content.lecture_no }}
+                                </a>
+                            </li>
+                            <li v-if="week.assignments && week.assignments.length" :style="assignmentHeaderStyle">
+                                Assignments:
+                                <ul :style="assignmentListStyle">
+                                    <li v-for="assignment in week.assignments" :key="assignment.id">
+                                        <a href="javascript:void(0);" @click="selectAssignment(assignment)" :style="linkStyle">
+                                            {{ assignment.title }}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                    <li @click="showProgrammingAssignment" style="cursor: pointer; padding: 10px; background-color: #ddd; text-align: center; margin-top: 10px;">
+                        Programming Assignment
+                    </li>
+                </ul>
+            </div>
 
-        <!-- Main Content Area -->
-        <div :style="mainContentStyle">
-            <div v-if="courseDetails">
-                <h4>Course Content</h4>
-                <p>Select a week from the sidebar to view the lectures.</p>
+            <div :style="mainContentStyle">
+                <div v-if="courseDetails">
+                    <h4>Course Content</h4>
+                    <p>Select a week from the sidebar to view the lectures and assignments.</p>
+
+                    <div v-if="selectedLectureUrl" :style="iframeWrapperStyle">
+                        <iframe :src="selectedLectureUrl" frameborder="0" width="100%" height="100%" allowfullscreen></iframe>
+                    </div>
+                    
+                    <div v-if="showAssignment" class="mt-3">
+                        <h4>Programming Assignment</h4>
+                        <p>Write a Python function to find the factorial of a given number.</p>
+                        <textarea v-model="assignmentCode" class="form-control mb-2" rows="5" placeholder="Enter your Python code here..."></textarea>
+                        <button @click="runAssignmentCode" class="btn btn-success">Run Code</button>
+                        <div v-if="assignmentResult" class="mt-2 p-2 border rounded bg-light">
+                            <strong>Result:</strong>
+                            <pre>{{ assignmentResult }}</pre>
+                        </div>
+                    </div>
+                    <div v-if="selectedAssignment" :style="assignmentDetailStyle">
+                        <h3>{{ selectedAssignment.title }}</h3>
+                        <p><strong>Description:</strong> {{ selectedAssignment.description }}</p>
+                        <p><strong>Due Date:</strong> {{ selectedAssignment.due_date ? new Date(selectedAssignment.due_date).toLocaleDateString() : 'Not set' }}</p>
+                        <p><strong>Max Marks:</strong> {{ selectedAssignment.max_marks }}</p>
+                        <p><strong>Status:</strong> {{ selectedAssignment.status }}</p>
+                        <div v-if="selectedAssignment.questions && selectedAssignment.questions.length">
+                            <h4>Questions:</h4>
+                            <ol>
+                                <li v-for="(question, index) in selectedAssignment.questions" :key="index">
+                                    {{ question }}
+                                    <ul v-if="selectedAssignment.options && selectedAssignment.options[index]">
+                                        <li v-for="option in selectedAssignment.options[index]" :key="option">
+                                            <label>
+                                                <input type="radio" :name="'question-' + index" :value="option" @change="updateResponse(index, option)" />
+                                                {{ option }}
+                                            </label>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                        <button @click="submitAssignment" :style="submitButtonStyle">Submit Assignment</button>
+                        <p v-if="submissionMessage">{{ submissionMessage }}</p>
+                    </div>
+                </div>
                 
-                <!-- Iframe Player for Video -->
-                <div v-if="selectedLectureUrl" :style="iframeWrapperStyle">
-                    <iframe :src="selectedLectureUrl" frameborder="0" width="100%" height="100%" allowfullscreen></iframe>
+                <div v-else>
+                    <p v-if="loading">Loading course details...</p>
+                    <p v-else>Error fetching course details. Please try again later.</p>
                 </div>
             </div>
-            <div v-else>
-                <p v-if="loading">Loading course details...</p>
-                <p v-else>Error fetching course details. Please try again later.</p>
-            </div>
-        </div>
 
-        <!-- Help Button -->
-        <button @click="toggleHelpWindow" :style="helpButtonStyle">Help</button>
+            <button @click="toggleHelpWindow" :style="helpButtonStyle">Help</button>
 
-        <!-- Help Window -->
-        <div v-if="showHelp" :style="helpWindowStyle">
-            <div :style="helpHeaderStyle">
-                <input v-model="helpQuery" @keyup.enter="fetchAIResponse" placeholder="Ask about this course..." :style="helpInputStyle" />
-                <button @click="fetchAIResponse" :style="helpSendButtonStyle">Send</button>
-            </div>
-            <div :style="helpResponseStyle">
-                <p v-if="loadingHelpResponse">Loading response...</p>
-                <!-- Render Markdown Response -->
-                <div v-else v-html="helpResponse"></div>
+            <div v-if="showHelp" :style="helpWindowStyle">
+                <div :style="helpHeaderStyle">
+                    <input v-model="helpQuery" @keyup.enter="fetchAIResponse" placeholder="Ask about this course..." :style="helpInputStyle" />
+                    <button @click="fetchAIResponse" :style="helpSendButtonStyle">Send</button>
+                </div>
+                <div :style="helpResponseStyle">
+                    <p v-if="loadingHelpResponse">Loading response...</p>
+                    <div v-else v-html="helpResponse"></div>
 
-                <!-- Display previous questions and responses -->
-                <div v-if="previousInteractions.length" :style="previousInteractionsStyle">
-                    <h4>Previous Interactions:</h4>
-                    <div v-for="(interaction, index) in previousInteractions" :key="index" :style="interactionStyle">
-                        <strong>Q:</strong> <span>{{ interaction.question }}</span><br>
-                        <strong>A:</strong> <span v-html="interaction.response"></span>
+                    <div v-if="previousInteractions.length" :style="previousInteractionsStyle">
+                        <h4>Previous Interactions:</h4>
+                        <div v-for="(interaction, index) in previousInteractions" :key="index" :style="interactionStyle">
+                            <strong>Q:</strong> <span>{{ interaction.question }}</span><br>
+                            <strong>A:</strong> <span v-html="interaction.response"></span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
     `,
     data() {
         return {
             courseDetails: null,
             loading: true,
             auth_token: localStorage.getItem("auth_token"),
-            weeks: [],  // Will hold the week data (each week contains its lectures)
-            selectedLectureUrl: null,  // Holds the URL of the selected lecture to play in the iframe
-            showHelp: false,  // Controls visibility of the help window
-            helpQuery: '',  // Stores user input query
-            helpResponse: '',  // Stores AI response
-            loadingHelpResponse: false,  // Loading state for help response
-            previousInteractions: [],  // Store previous interactions (questions & responses)
+            weeks: [],
+            selectedLectureUrl: null,
+            showHelp: false,
+            helpQuery: '',
+            helpResponse: '',
+            loadingHelpResponse: false,
+            previousInteractions: [],
+            selectedAssignment: null,
+            userResponses: {},
+            submissionMessage: '',
+            showAssignment: false,
+            assignmentCode: '',
+            assignmentResult: null,
         };
     },
     methods: {
@@ -89,6 +136,7 @@ export default {
                     },
                 });
                 const data = await res.json();
+                console.log("API Response:", data);
                 if (res.ok) {
                     this.courseDetails = data;
                     this.processCourseData(data);
@@ -102,12 +150,28 @@ export default {
                 alert("There was an issue fetching the course details.");
             }
         },
-
+        showProgrammingAssignment() {
+            this.selectedAssignment = null;
+            this.selectedLectureUrl = null;
+            this.showAssignment = true;
+        },
+        async runAssignmentCode() {
+            try {
+                const result = eval(`(function() { return ${this.assignmentCode}; })()`);
+                this.assignmentResult = result;
+            } catch (error) {
+                this.assignmentResult = `Error: ${error.message}`;
+            }
+        },
+        selectAssignment(assignment) {
+            this.selectedAssignment = assignment;
+            this.selectedLectureUrl = null;
+            this.showAssignment = false;
+        },
         async fetchAIResponse() {
             if (!this.helpQuery.trim()) return;
             this.loadingHelpResponse = true;
             this.helpResponse = "";
-
             const course_id = this.$route.params.course_id;
             try {
                 const res = await fetch(`/api/ai/course/${course_id}/content`, {
@@ -118,20 +182,13 @@ export default {
                     },
                     body: JSON.stringify({ question: this.helpQuery })
                 });
-
                 const data = await res.json();
                 if (res.ok) {
-                    console.log(data);
-                    // Convert the response markdown to HTML
                     this.helpResponse = this.convertMarkdownToHtml(data.response || "No relevant information found.");
-                    
-                    // Store the current question and response
                     this.previousInteractions.push({
                         question: this.helpQuery,
                         response: this.helpResponse,
                     });
-
-                    // Clear the query input field
                     this.helpQuery = "";
                 } else {
                     throw new Error(data.message);
@@ -143,25 +200,61 @@ export default {
                 this.loadingHelpResponse = false;
             }
         },
-
         processCourseData(data) {
             let weeks = [];
-            data.content.forEach(content => {
-                const weekNumber = content.lecture_no.split('.')[0];  
-                if (!weeks[weekNumber - 1]) {
-                    weeks[weekNumber - 1] = { isOpen: false, content: [] };
+            data.content.forEach(weekData => { // Iterate through week objects
+                if (weekData && weekData.lectures && Array.isArray(weekData.lectures)) {
+                    weekData.lectures.forEach(lecture => { // Iterate through lectures
+                        if (lecture && lecture.lecture_no && typeof lecture.lecture_no === 'number' && lecture.lecture_url) {
+                            const weekNumber = weekData.week;
+                            if (!weeks[weekNumber - 1]) {
+                                weeks[weekNumber - 1] = { isOpen: false, content: [], assignments: [] };
+                            }
+                            weeks[weekNumber - 1].content.push({
+                                lecture_no: weekData.week + "." + lecture.lecture_no,
+                                lecture_url: lecture.lecture_url
+                            });
+                        } else {
+                            console.warn("Lecture object missing lecture_no or invalid:", lecture);
+                        }
+                    });
+                } else {
+                    console.warn("Week object missing lectures or invalid:", weekData);
                 }
-                weeks[weekNumber - 1].content.push(content);
             });
+        
+            if (data.assignments) {
+                data.assignments.forEach(week => {
+                    if (weeks[week.week - 1]) {
+                        weeks[week.week - 1].assignments = week.assignments;
+                    }
+                });
+            }
+        
             this.weeks = weeks;
         },
 
+        updateResponse(questionIndex, selectedOption) {
+            this.userResponses[questionIndex] = selectedOption;
+        },
+        submitAssignment() {
+            this.submissionMessage = 'Assignment submitted successfully.';
+            this.clearSubmissionMessage(); // Clear the message after a delay
+        },
+
+        clearSubmissionMessage() {
+            setTimeout(() => {
+                this.submissionMessage = '';
+            }, 5000);
+        },
         toggleDropdown(index) {
             this.weeks[index].isOpen = !this.weeks[index].isOpen;
         },
 
         selectLecture(lectureUrl) {
             this.selectedLectureUrl = lectureUrl;
+            this.selectedAssignment = null; 
+            this.showAssignment = false; 
         },
 
         toggleHelpWindow() {
@@ -196,6 +289,20 @@ export default {
         await this.get_course_details(course_id);
     },
     computed: {
+
+
+        submitButtonStyle() {
+            return {
+                marginTop: '20px',
+                padding: '10px 20px',
+                background: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+            };
+        },
+
         containerStyle() {
             return { display: 'flex', height: '100vh' };
         },
@@ -214,6 +321,28 @@ export default {
                 borderRadius: '4px',
                 textAlign: 'center',
                 color: 'white', };
+        },
+
+        assignmentHeaderStyle() {
+            return {
+                fontWeight: 'bold',
+                marginTop: '10px',
+                marginBottom: '5px'
+            };
+        },
+
+        assignmentDetailStyle() {
+            return {
+                marginTop: '20px',
+                border: '1px solid #ddd',
+                padding: '20px',
+            };
+        },
+        assignmentListStyle() {
+            return {
+                listStyleType: 'none',
+                paddingLeft: '10px'
+            };
         },
         nestedListStyle() {
             return { paddingLeft: '10px', listStyleType: 'none' };

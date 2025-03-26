@@ -8,7 +8,7 @@ export default {
           alt="EduNex Logo"
           style="width: 40px; height: auto; margin-right: 10px;"
         />
-        EduNex
+        LearnX
       </a>
       <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>

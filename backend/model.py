@@ -135,3 +135,15 @@ class CourseProgress(db.Model):
     content_id = db.Column(db.Integer, db.ForeignKey('course_content.id'), nullable=False)
     completed_at = db.Column(db.DateTime, default=dt.now)
     progress_percentage = db.Column(db.Float, default=0.0)
+
+
+class Feedback(db.Model):
+    __tablename__ = 'feedback'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    feedback = db.Column(db.Text, nullable=False)
+    submitted_at = db.Column(db.DateTime, default=dt.now)
+
+    student = db.relationship('User', backref=db.backref('feedbacks', lazy=True))
+    course = db.relationship('Course', backref=db.backref('feedbacks', lazy=True))

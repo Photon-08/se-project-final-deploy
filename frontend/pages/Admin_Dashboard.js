@@ -70,12 +70,37 @@ export default {
       </div>
     </div>
   </div>
+
+
+<div class="container mt-4">
+    <h2 class="mb-3 text-primary fw-bold">Course Sentiment Analysis</h2>
+    
+    <div class="d-flex flex-wrap gap-3">
+      <div v-for="(sentiment, course) in feedbacks" :key="course" 
+           class="card shadow-sm p-3 border-0 rounded" 
+           style="width: 280px; transition: transform 0.2s; cursor: pointer;"
+           @mouseover="e => e.currentTarget.style.transform='scale(1.05)'" 
+           @mouseleave="e => e.currentTarget.style.transform='scale(1)'"><!-- Closing div corrected -->
+        
+        <div class="card-body text-center">
+          <h5 class="text-dark fw-bold mb-2">{{ course }}</h5>
+          <p class="text-secondary">Sentiment: <span :class="getSentimentClass(sentiment)">{{ sentiment }}</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  
+
 </div>
   `,
 
   data() {
     return {
       courses: [],
+      feedbacks: {},  // Initialize feedbacks object
+      feedbackVisibility: {},  // Track which feedback sections are visible
       newCourse: { course_name: '', credits: '' },
       editCourse: { id: '', course_name: '', credits: '', instructor_id: '' },
       auth_token: localStorage.getItem("auth_token"),
@@ -155,10 +180,38 @@ export default {
         alert(data.message);
       }
     },
+  
+
+
+    async getFeedbacks() {
+      const res = await fetch('http://127.0.0.1:5000/api/analyze-sentiment', {
+        method: 'GET',
+        headers: { 
+          "Authentication-Token": localStorage.getItem("auth_token"),
+          "Content-Type": "application/json" 
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        this.feedbacks = data;
+      } else {
+        alert("Failed to fetch feedbacks");
+      }
+    },
+    getSentimentClass(sentiment) {
+      if (sentiment === 'Positive') return 'text-success fw-bold';
+      if (sentiment === 'Negative') return 'text-danger fw-bold';
+      return 'text-warning fw-bold';
+    },
+  
+  toggleFeedback(courseId) {
+    this.feedbackVisibility[courseId] = !this.feedbackVisibility[courseId];
   },
+},
 
   async mounted() {
     await this.getCourses();
+    await this.getFeedbacks();
   },
 };
 

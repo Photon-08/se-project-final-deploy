@@ -1,6 +1,58 @@
 export default {
   template: `<div class="container mt-4">
-  <h2 class="text-center">Course Content Management</h2>
+
+  <h3 class="text-center mb-4">Feedback Analysis</h3>
+
+<!-- Sentiment Distribution & Word Cloud Side by Side -->
+<div class="row mb-5">
+  <!-- Sentiment Distribution -->
+  <div class="col-md-6 d-flex flex-column align-items-center">
+    <h4>Sentiment Distribution</h4>
+    <canvas 
+      ref="sentimentChart" 
+      class="chart-canvas"
+      width="500"
+      height="400"
+    ></canvas>
+  </div>
+
+  <!-- Word Cloud -->
+  <div class="col-md-6 d-flex flex-column align-items-center">
+    <h4>Word Cloud</h4>
+    <canvas 
+      id="wordcloud-canvas"
+      class="chart-canvas"
+      width="500"
+      height="400"
+    ></canvas>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+  .chart-canvas {
+    display: block;
+    width: 100% !important;
+    height: auto;
+    border: 2px solid #ddd;  /* Restores the border */
+    border-radius: 8px;
+    background-color: white;
+  },
+  .wordcloud-canvas {
+  border: 2px solid #ddd !important;  /* Adds a border */
+  border-radius: 8px !important;      /* Optional: rounded edges */
+  background-color: white !important; /* Ensures visibility */
+}
+</style>
+
+
+<div class="course-container">
+
+  <h2 class="text-center mb-4">Course Content Management</h2>
+
+
+  
+
 
   <div v-for="week in weeks" :key="\`week-\${week.weekIndex}\`" class="mb-4">
     <h3>Week {{ week.weekIndex }}</h3>
@@ -52,6 +104,21 @@ export default {
   <!-- Buttons to add new week and submit content -->
   <button @click="addNewWeek" class="btn btn-outline-success mt-3">Add Another Week</button>
   <button @click="submitContent" class="btn btn-success mt-4">Submit</button>
+
+</div>
+
+<style>
+  .course-container {
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  }
+</style>
+
+  
 </div>
 
   `,
@@ -64,7 +131,17 @@ export default {
       dropdownOpen: null,
       course_id: null,
       loading: false,
+      feedback: "",
+      sentimentData: {
+        positive: 0,
+        neutral: 0,
+        negative: 0
+      },
+      wordCloudData: {},
+      chartInstance: null,
+      
     };
+    
   },
 
   methods: {
@@ -213,7 +290,116 @@ export default {
         this.messageType = "error";
       }
     },
+
+
+
+    async submitFeedback() {
+      if (!this.feedback.trim()) {
+        alert("Please enter feedback before submitting.");
+        return;
+      }
+    
+      const response = await fetch(`/api/feedback/${this.course_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": localStorage.getItem("auth_token"),
+        },
+        body: JSON.stringify({
+          student_id: localStorage.getItem("student_id"),
+          feedback: this.feedback,
+        }),
+      });
+    
+      if (response.ok) {
+        alert("Feedback submitted successfully!");
+        this.feedback = "";
+      } else {
+        alert("Failed to submit feedback.");
+      }
+    },
+
+
+
+    async fetchFeedbackAnalysis() {
+      try {
+        const response = await fetch(`/api/feedback-analytics/${this.course_id}`, {
+          headers: { "Authentication-Token": localStorage.getItem("auth_token") }
+        });
+        const data = await response.json();
+        if (data.status === "success") {
+          this.sentimentData = data.sentiment_counts;
+          this.wordCloudData = data.word_cloud;
+          console.log('Word cloud data:', this.wordCloudData);
+          this.$nextTick(() => this.renderChart());
+
+
+          
+        const canvas = document.getElementById('wordcloud-canvas');
+        
+        if (canvas) {
+          window.WordCloud(canvas, { list: Object.entries(this.wordCloudData),
+          gridSize: 10,
+          weightFactor: 20,
+          shape: "square" });
+        }
+        
+        
+        }
+      } catch (error) {
+        console.error('Error fetching feedback analysis:', error);
+      }
+    },
+  
+    calculateWordSize(count) {
+      const maxCount = Math.max(...Object.values(this.wordCloudData));
+      return 10 + (count / maxCount) * 30;
+    },
+  
+    renderChart() {
+      if (this.chartInstance) {
+        this.chartInstance.destroy();
+      }
+  
+      const ctx = this.$refs.sentimentChart.getContext('2d');
+      this.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Positive', 'Mixed', 'Negative'],
+          datasets: [{
+            label: 'Feedback Sentiment',
+            data: [this.sentimentData.positive, this.sentimentData.neutral, this.sentimentData.negative],
+            backgroundColor: [
+              'rgba(75, 192, 87, 0.6)',
+              'rgba(255, 206, 86, 0.6)',
+              'rgba(255, 99, 132, 0.6)'
+            ],
+            borderColor: [
+              'rgb(89, 192, 75)',
+              'rgba(255, 206, 86, 1)',
+              'rgba(255, 99, 132, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0
+              }
+            }
+          }
+        }
+      });
+    }
   },
+
+
+
+  
 
   mounted() {
     const course_id = this.$route.params.course_id;
@@ -224,5 +410,6 @@ export default {
     }
     this.course_id = course_id;
     this.get_course_details(course_id);
+    this.fetchFeedbackAnalysis();
   },
 };

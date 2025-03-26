@@ -9,7 +9,10 @@ from backend.ai.programming_assistant import ProgrammingAssistant
 from backend.ai.assignment_helper import AssignmentHelper
 from backend.ai.study_planner import StudyPlanner
 from backend.ai.grading_assistant import GradingAssistant
+from backend.ai.feedback_review import analyze_sentiment
 import os
+import pytz
+IST = pytz.timezone('Asia/Kolkata')  # Define IST timezone
 
 
 api = Api(prefix='/api')
@@ -907,6 +910,160 @@ class AI_Grading_Assistant_API(Resource):
         
         from flask import jsonify, request
 
+from collections import Counter
+import re
+
+def generate_word_cloud(feedback_list):
+    """Generate word frequency from feedback"""
+    all_text = " ".join(feedback_list).lower()
+    words = re.findall(r'\b[a-zA-Z]{3,}\b', all_text)  # Filter words with at least 3 letters
+    word_freq = Counter(words).most_common(10)  # Get top 10 words
+    return dict(word_freq)
+
+
+class FeedbackAPI(Resource):
+    def get(self, course_id):
+        """Fetch all feedback for a specific course"""
+        try:
+            feedback_entries = Feedback.query.filter_by(course_id=course_id).all()
+            
+            structured_feedback = [
+                {
+                    "id": fb.id,
+                    "student_id": fb.student_id,
+                    "course_id": fb.course_id,
+                    "feedback": fb.feedback,
+                    "submitted_at": fb.submitted_at.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S") if fb.submitted_at else None
+                }
+                for fb in feedback_entries
+            ]
+            
+            return jsonify({
+                'status': 'success',
+                'feedback': structured_feedback
+            })
+
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    def post(self, course_id):
+        """Submit feedback for a course"""
+        try:
+            data = request.get_json()
+
+            if not data or 'student_id' not in data or 'feedback' not in data:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Invalid data format. Required fields: student_id, feedback'
+                }), 400
+
+            # Get current IST time
+            ist_now = datetime.now(IST)
+
+            new_feedback = Feedback(
+                student_id=data['student_id'],
+                course_id=course_id,
+                feedback=data['feedback'],
+                submitted_at=ist_now  # Store IST time in the database
+            )
+
+            db.session.add(new_feedback)
+            db.session.commit()
+
+            return jsonify({
+                'status': 'success',
+                'message': 'Feedback submitted successfully'
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
+#for admin feedback review
+
+class CourseSentiment(Resource):
+    def get(self):
+        """Fetches all feedback from the database and returns course-wise sentiment"""
+        course_feedback = {}
+
+        # Fetch all feedback entries with course details
+        feedback_entries = db.session.query(Feedback.feedback, Course.course_name).join(Course, Feedback.course_id == Course.id).all()
+
+        course_feedback_map = {}
+
+        for feedback, course_name in feedback_entries:
+            if course_name not in course_feedback_map:
+                course_feedback_map[course_name] = []
+            course_feedback_map[course_name].append(feedback)
+
+        # Perform sentiment analysis for each course
+        for course_name, feedbacks in course_feedback_map.items():
+            course_feedback[course_name] = analyze_sentiment(feedbacks)
+
+        return jsonify(course_feedback)
+    
+
+class CourseFeedbackAnalytics(Resource):
+    def get(self, course_id):
+        """Fetch feedback analytics for a specific course"""
+        try:
+            feedback_entries = Feedback.query.filter_by(course_id=course_id).all()
+            
+            if not feedback_entries:
+                return jsonify({"status": "error", "message": "No feedback found for this course."}), 404
+            
+            feedback_texts = [fb.feedback for fb in feedback_entries]
+            
+            # Perform sentiment analysis for each feedback entry
+            sentiment_results = analyze_sentiment(feedback_texts)
+            print(sentiment_results)
+
+            # Count positive, neutral, and negative feedback
+            sentiment_counts = {
+                "positive": sentiment_results.count("Positive"),
+                "neutral": sentiment_results.count("Mixed"),
+                "negative": sentiment_results.count("Negative"),
+            }
+
+            # Generate word cloud data
+            word_freq = generate_word_cloud(feedback_texts)
+            stop_word_list = ['the', 'and', 'or', 'is', 'are', 'to', 'in', 'on', 'of', 'for', 'with', 
+                              'this', 'that', 'it', 'as', 'an', 'by', 'be', 'at', 'from', 'you', 'your', 
+                              'we', 'our', 'us', 'they', 'them', 'he', 'she', 'his', 'her', 'their', 'a', 
+                              'about', 'after', 'all', 'also', 'am',  'because', 
+                              'been', 'but', 'can', 'could', 'do', 'does', 
+                              'each', 'even', 'how', 'if', 'into', 'its', 'just', 
+                              'like', 'may', 'more', 'no', 'not', 'now', 'only', 'other', 
+                              'out', 'over', 'said', 'see', 'should', 'some', 'such', 'than', 'then', 
+                              'there', 'these', 'thing', 'think', 'those', 'two', 'up', 'use', 'way', 'what', 
+                              'when', 'which', 'who', 'will', 'would', 'year', 'you', 
+                              'your']
+            word_freq = {word: freq for word, freq in word_freq.items() if word not in stop_word_list}
+
+            
+            return jsonify({
+                "status": "success",
+                "course_id": course_id,
+                "total_feedback": len(feedback_texts),
+                "sentiment_counts": sentiment_counts,
+                "word_cloud": word_freq
+            })
+
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
+
+
+api.add_resource(CourseFeedbackAnalytics, "/feedback-analytics/<int:course_id>")
+
+
+
+api.add_resource(CourseSentiment, "/analyze-sentiment")
+
+
 
 # Add resources to API
 api.add_resource(Admin_Course_API, '/admin_course')                                 # Admin can Add, Edit and Update course info
@@ -926,4 +1083,4 @@ api.add_resource(AI_Programming_API, '/ai/programming')
 api.add_resource(AI_Assignment_Helper_API, '/ai/assignment/<int:course_id>/<int:assignment_id>/help')
 api.add_resource(AI_Study_Planner_API, '/ai/course/<int:course_id>/study')
 api.add_resource(AI_Grading_Assistant_API, '/ai/grading/<int:course_id>/analyze')
-
+api.add_resource(FeedbackAPI, '/feedback/<int:course_id>')                       # Course feedback management

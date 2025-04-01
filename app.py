@@ -1,8 +1,11 @@
+import os
 from flask import Flask
 from backend.config import LocalDevelopmentConfig
 from backend.model import db, User, Role
 from flask_security import Security, SQLAlchemyUserDatastore
-
+from app_secrets import OPENAI_API_KEY, OPENROUTER_API_KEY
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+os.environ["OPENROUTER_API_KEY"] = OPENROUTER_API_KEY
 def createApp():
     app = Flask(
         __name__,
@@ -31,6 +34,30 @@ import backend.router
 #print(app.url_map)
 
 import os
-os.environ["OPENAI_API_KEY"] = "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"
+#os.environ["OPENAI_API_KEY"] = "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"
+#os.environ["OPENROUTER_API_KEY"] = "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"
+
+
+
+"""
+def load_env_variables(filename="config.env"):
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            for line in f:
+                key, value = line.split("=", 1)
+                value = value.strip()
+                key = key.strip()
+                #print(key, value)
+                print(f"{key}={value}")
+
+
+
+                os.environ[key] = value
+load_env_variables()
+"""
+
+# Load environment variables from config.env file
+
+
 if (__name__ == '__main__'):
     app.run()

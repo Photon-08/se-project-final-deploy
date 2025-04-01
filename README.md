@@ -38,3 +38,33 @@ project/
 ├── req.txt                         # Dependencies 
 
 
+## Python Version
+
+* **Required:** Python 3.9 or Python 3.10  
+
+Please ensure you are using one of these versions to maintain compatibility.  
+
+## Running the Application  
+
+Follow these steps to run the application:  
+```bash
+# Navigate to the project directory
+cd soft-engg-project-jan-2025-se-Jan-22
+
+# Install dependencies (if any)
+pip install -r final_requirements.txt
+
+# Run the main application script
+python main.py
+```
+
+To run the AI Chatbot:
+```
+How to get the OPENAI_API_KEY?
+Please go to `https://openrouter.ai/` and create your free OPENAI compatiable api key
+
+Step 2:
+Inside the `app_secrets.py` file, paste your api keys 
+OPENAI_API_KEY = your_api_key
+OPENROUTER_API_KEY = your_api_key
+```

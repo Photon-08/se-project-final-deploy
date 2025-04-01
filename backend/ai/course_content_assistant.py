@@ -65,7 +65,8 @@ class CourseContentAssistant:
             # Initialize agent with knowledge base and persistent storage
             self.agent = Agent(
                 model=OpenRouter(
-                    id="google/gemini-2.0-pro-exp-02-05:free",
+                    #id="google/gemini-2.0-pro-exp-02-05:free",
+                    id = 'mistralai/mistral-small-3.1-24b-instruct:free',
                     max_tokens=4096,
                     ),
                 tools=[

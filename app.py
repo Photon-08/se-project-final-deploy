@@ -57,7 +57,3 @@ load_env_variables()
 """
 
 # Load environment variables from config.env file
-
-
-if (__name__ == '__main__'):
-    app.run()
